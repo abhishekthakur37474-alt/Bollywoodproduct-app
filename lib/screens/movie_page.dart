@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'movie_detail_page.dart';
-import 'movie_tile.dart';
+import 'screens/movie_detail_page.dart';
+import 'widgets/movie_tile.dart';
 
 class MoviePage extends StatefulWidget {
   const MoviePage({super.key});
