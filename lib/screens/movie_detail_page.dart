@@ -1,14 +1,22 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'movie_detail_page.dart';
+
+import '../widgets/movie_tile.dart';
+import '../utils/data_adapter.dart';
+import '../services/report_service.dart';
 
 class MovieDetailPage extends StatefulWidget {
-  final String id;
-  final String title;
+  final Map data;
+  final List exploreList;
 
-  const MovieDetailPage({super.key, required this.id, required this.title});
+  const MovieDetailPage({
+    super.key,
+    required this.data,
+    required this.exploreList,
+  });
 
   @override
   State<MovieDetailPage> createState() => _MovieDetailPageState();
@@ -17,98 +25,181 @@ class MovieDetailPage extends StatefulWidget {
 class _MovieDetailPageState extends State<MovieDetailPage> {
   bool loading = true;
 
-  String name = "-";
-  String year = "-";
-  String genre = "-";
-  String language = "-";
-  String director = "Unknown";
+  late String name;
+  late String year;
+
+  String genre = "";
+  String language = "";
+  String director = "";
   List<String> cast = [];
+
+  // 🔥 NEW CBFC FIELDS
+  String cbfcRating = "";
+  String cbfcNumber = "";
+  String cbfcDate = "";
+
+
   String? poster;
   String? trailerUrl;
-
-  List<Map<String, dynamic>> moreMovies = [];
-  bool loadingMore = true;
 
   @override
   void initState() {
     super.initState();
+    name = DataAdapter.extractTitle(widget.data);
+    year = DataAdapter.extractYear(widget.data);
+    poster = DataAdapter.extractPoster(widget.data);
+    print("======== MOVIE DETAIL DEBUG ========");
+    print("Movie Name: $name");
+    print("Unique ID: ${widget.data["unique_id"]}");
+    print("CBFC from LIST API:");
+    print("cbfc_rating: ${widget.data["cbfc_rating"]}");
+    print("cbfc_certificate_no: ${widget.data["cbfc_certificate_no"]}");
+    print("cbfc_certificate_date: ${widget.data["cbfc_certificate_date"]}");
+    print("cbfc_certificate_month: ${widget.data["cbfc_certificate_month"]}");
+    print("cbfc_certificate_year: ${widget.data["cbfc_certificate_year"]}");
+    print("=====================================");
+
+    /// ✅ CBFC FROM LIST API (IMPORTANT)
+    cbfcRating = widget.data["cbfc_rating"]?.toString() ?? "";
+    cbfcNumber = widget.data["cbfc_certificate_no"]?.toString() ?? "";
+
+    final d = widget.data["cbfc_certificate_date"]?.toString() ?? "";
+    final m = widget.data["cbfc_certificate_month"]?.toString() ?? "";
+    final y = widget.data["cbfc_certificate_year"]?.toString() ?? "";
+
+    if (d.isNotEmpty && m.isNotEmpty && y.isNotEmpty) {
+      cbfcDate = "$d/$m/$y";
+    }
+
     fetchDetails();
-    fetchMoreMovies();
+
   }
 
-  Future<void> fetchMoreMovies() async {
-    final url = Uri.parse("https://hindi.bollywoodproduct.com/api-latest-movies.php");
-    final res = await http.get(url);
-
-    if (res.statusCode == 200) {
-      final list = jsonDecode(res.body)["movies"] as List;
-      final sliced = list.take(10).toList();
-
-      for (var m in sliced) {
-        final detail = await fetchPoster(m["unique_id"]);
-        moreMovies.add({
-          "id": m["unique_id"],
-          "title": m["name"],
-          "poster": detail,
-        });
-      }
-    }
-
-    if (mounted) setState(() => loadingMore = false);
+  String get starringShort {
+    if (cast.isEmpty) return "";
+    return "${cast.take(2).join(", ")}${cast.length > 2 ? " +${cast.length - 2}" : ""}";
   }
 
-  Future<String?> fetchPoster(String id) async {
-    final u = Uri.parse("https://hindi.bollywoodproduct.com/api-film-details.php?unique_id=$id");
-    final r = await http.get(u);
-    if (r.statusCode != 200) return null;
-    final raw = jsonDecode(r.body);
-    if (raw["trailers"] is List && raw["trailers"].isNotEmpty) {
-      return raw["trailers"][0]["youtube_image_url"];
-    }
-    return null;
+  List get exploreFive {
+    final currentId =
+    (widget.data["unique_id"] ?? widget.data["film_id"])?.toString();
+
+    final filtered = widget.exploreList.where((m) {
+      final id = (m["unique_id"] ?? m["film_id"])?.toString();
+      return id != null && id != currentId;
+    }).toList();
+
+    return filtered.isNotEmpty
+        ? filtered.take(5).toList()
+        : widget.exploreList.take(5).toList();
   }
 
   Future<void> fetchDetails() async {
-    final url = Uri.parse("https://hindi.bollywoodproduct.com/api-film-details.php?unique_id=${widget.id}");
-    final res = await http.get(url);
-
-    if (res.statusCode != 200) {
+    final id = widget.data["unique_id"] ?? widget.data["film_id"];
+    if (id == null) {
       setState(() => loading = false);
       return;
     }
 
-    final raw = jsonDecode(res.body);
-    name = raw["film_name"] ?? widget.title;
-    year = raw["year_release"]?.toString() ?? "-";
+    try {
+      final res = await http.get(
+        Uri.parse(
+            "https://hindi.bollywoodproduct.com/api-film-details.php?unique_id=$id"),
+      );
 
-    if (raw["trailers"] is List && raw["trailers"].isNotEmpty) {
-      final t = raw["trailers"][0];
-      poster = t["youtube_image_url"];
-      if (t["teaser"] != null && t["teaser"] != "") {
-        trailerUrl = "https://youtube.com/watch?v=${t["teaser"]}";
+      if (res.statusCode != 200 || !res.body.trim().startsWith('{')) {
+        setState(() => loading = false);
+        return;
       }
-    }
 
-    final schemaRaw = raw["schema"];
-    if (schemaRaw is String && schemaRaw.trim().isNotEmpty) {
-      final pieces = schemaRaw.split("</script>");
-      for (var p in pieces) {
-        var block = p.replaceAll(RegExp(r'<script[^>]*>'), '').trim();
-        if (!block.startsWith("{")) continue;
-        try {
-          final data = jsonDecode(block);
-          if (data["@type"] == "Movie") {
-            if (data["genre"] is List) genre = (data["genre"] as List).join(", ");
-            if (data["inLanguage"] is String) language = data["inLanguage"];
-            if (data["director"] is Map && data["director"]["name"] != null) director = data["director"]["name"];
-            if (data["actor"] is List) {
-              cast = data["actor"].map<String>((a) => a["name"].toString()).toList();
-            }
-            break;
+      final raw = jsonDecode(res.body);
+      print("---- DETAILS API RESPONSE ----");
+      print("Movie ID: $id");
+      print("CBFC from DETAILS API:");
+      print("cbfc_rating: ${raw["cbfc_rating"]}");
+      print("cbfc_certificate_no: ${raw["cbfc_certificate_no"]}");
+      print("cbfc_certificate_date: ${raw["cbfc_certificate_date"]}");
+      print("cbfc_certificate_month: ${raw["cbfc_certificate_month"]}");
+      print("cbfc_certificate_year: ${raw["cbfc_certificate_year"]}");
+      print("-------------------------------");
+
+      // 🔥 FETCH CBFC DATA
+      // 🔥 FETCH CBFC DATA (DO NOT OVERWRITE LIST API DATA)
+
+      if (raw["cbfc_rating"] != null && raw["cbfc_rating"].toString().isNotEmpty) {
+        cbfcRating = raw["cbfc_rating"].toString();
+      }
+
+      if (raw["cbfc_certificate_no"] != null &&
+          raw["cbfc_certificate_no"].toString().isNotEmpty) {
+        cbfcNumber = raw["cbfc_certificate_no"].toString();
+      }
+
+      final d = raw["cbfc_certificate_date"]?.toString() ?? "";
+      final m = raw["cbfc_certificate_month"]?.toString() ?? "";
+      final y = raw["cbfc_certificate_year"]?.toString() ?? "";
+
+      if (d.isNotEmpty && m.isNotEmpty && y.isNotEmpty) {
+        cbfcDate = "$d/$m/$y";
+      }
+
+
+      if (raw["trailers"] is List && raw["trailers"].isNotEmpty) {
+        final t = raw["trailers"][0];
+
+        final extractedId = DataAdapter.extractYoutubeId(t);
+
+        if (extractedId != null && extractedId.length == 11) {
+          trailerUrl = extractedId;
+        } else {
+          trailerUrl = null;
+        }
+
+        poster ??= t["youtube_image_url"];
+      }
+
+      final schemaRaw = raw["schema"];
+      if (schemaRaw is String && schemaRaw.contains("{")) {
+        for (final part in schemaRaw.split("</script>")) {
+          final clean =
+          part.replaceAll(RegExp(r'<script[^>]*>'), '').trim();
+          if (!clean.startsWith("{")) continue;
+
+          final schema = jsonDecode(clean);
+          if (schema["@type"] != "Movie") continue;
+
+          if (schema["genre"] is List) {
+            genre = (schema["genre"] as List).join(", ");
           }
-        } catch (_) {}
+
+          if (schema["inLanguage"] is String) {
+            language = schema["inLanguage"];
+          }
+
+          final dir = schema["director"];
+          if (dir is Map && dir["name"] != null) {
+            director = dir["name"];
+          } else if (dir is List) {
+            director =
+                dir.map((d) => d["name"]).whereType<String>().join(", ");
+          }
+
+          final actors = schema["actor"];
+          if (actors is List) {
+            cast =
+                actors.map((a) => a["name"]).whereType<String>().toList();
+          } else if (actors is Map && actors["name"] != null) {
+            cast = [actors["name"]];
+          }
+          break;
+        }
       }
-    }
+    } catch (_) {}
+    print("FINAL CBFC VALUES USED IN UI:");
+    print("cbfcRating: $cbfcRating");
+    print("cbfcNumber: $cbfcNumber");
+    print("cbfcDate: $cbfcDate");
+    print("=====================================");
 
     if (mounted) setState(() => loading = false);
   }
@@ -118,28 +209,67 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     return Scaffold(
       backgroundColor: const Color(0xff0F0F0F),
       body: loading
-          ? const Center(child: CircularProgressIndicator(color: Colors.amber))
+          ? const Center(
+        child: CircularProgressIndicator(color: Color(0xffD4AF37)),
+      )
           : buildContent(),
     );
   }
 
   Widget buildContent() {
-    final truncatedCast =
-    cast.isEmpty ? "-" : "${cast.take(2).join(", ")}${cast.length > 2 ? " +${cast.length - 2}" : ""}";
-
     return CustomScrollView(
       slivers: [
         SliverAppBar(
-          expandedHeight: 310,
+          expandedHeight: 340,
           pinned: true,
           backgroundColor: Colors.black,
           flexibleSpace: FlexibleSpaceBar(
-            title: Text("$name ", style: const TextStyle(fontSize: 18)),
+            titlePadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            title: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.playfairDisplay(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
             background: Stack(
               fit: StackFit.expand,
               children: [
-                poster != null ? Image.network(poster!, fit: BoxFit.cover) : Container(color: Colors.black),
-                Container(color: Colors.black.withOpacity(0.45)),
+                if (poster != null)
+                  Image.network(
+                    poster!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.black,
+                        child: const Center(
+                          child: Icon(
+                            Icons.movie,
+                            color: Colors.white30,
+                            size: 60,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withOpacity(0.9),
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.95),
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -151,68 +281,145 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                infoRow("Genre", genre),
-                infoRow("Language", language),
-                infoRow("Director", director),
-                GestureDetector(onTap: cast.isEmpty ? null : showCastSheet, child: infoRow("Cast", truncatedCast)),
+                if (genre.isNotEmpty) infoRow("Genre", genre),
+                if (language.isNotEmpty) infoRow("Language", language),
+                if (director.isNotEmpty) infoRow("Director", director),
+                if (cast.isNotEmpty)
+                  GestureDetector(
+                    onTap: showCastSheet,
+                    child: infoRow("Starring", starringShort),
+                  ),
+
+                /// ✅ CBFC UI
+                if (cbfcRating.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10, bottom: 18),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            cbfcRating,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        if (cbfcNumber.isNotEmpty)
+                          Text(
+                            "Certificate No: $cbfcNumber",
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                            ),
+                          ),
+                        if (cbfcDate.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 10),
+                            child: Text(
+                              cbfcDate,
+                              style: const TextStyle(
+                                color: Colors.white60,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+
                 const SizedBox(height: 26),
-                const Text("Trailers",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: Color(0xffD4AF37))),
+
+                const Text(
+                  "Trailers",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xffD4AF37),
+                  ),
+                ),
                 const SizedBox(height: 12),
                 trailerButton(),
+
+                const SizedBox(height: 20),
+                GestureDetector(
+                  onTap: showReportSheet,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Icon(Icons.flag_outlined,
+                          size: 16, color: Colors.redAccent),
+                      SizedBox(width: 6),
+                      Text(
+                        "Report an issue",
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
                 const SizedBox(height: 32),
               ],
             ),
           ),
         ),
 
-        // Explore Section
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(22, 0, 22, 16),
-            child: const Text("Explore More Movies",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.white)),
+            child: const Text(
+              "Explore More Movies like this",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
           ),
         ),
 
         SliverToBoxAdapter(
           child: SizedBox(
             height: 190,
-            child: loadingMore
-                ? const Center(child: CircularProgressIndicator(color: Colors.amber))
-                : ListView.builder(
+            child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              itemCount: moreMovies.length,
+              padding:
+              const EdgeInsets.symmetric(horizontal: 22),
+              itemCount: exploreFive.length,
               itemBuilder: (context, i) {
-                final m = moreMovies[i];
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(context,
-                        MaterialPageRoute(builder: (_) => MovieDetailPage(id: m["id"], title: m["title"])));
-                  },
-                  child: Container(
-                    width: 140,
-                    margin: const EdgeInsets.only(right: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        AspectRatio(
-                          aspectRatio: 16 / 9,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: m["poster"] == null
-                                ? Container(color: Colors.white10)
-                                : Image.network(m["poster"], fit: BoxFit.cover),
+                final m = exploreFive[i];
+                return Container(
+                  width: 140,
+                  margin:
+                  const EdgeInsets.only(right: 12),
+                  child: MovieTile(
+                    id: m["unique_id"],
+                    title: DataAdapter.extractTitle(m),
+                    year: DataAdapter.extractYear(m),
+                    posterOverride:
+                    DataAdapter.extractPoster(m),
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => MovieDetailPage(
+                            data: m,
+                            exploreList:
+                            widget.exploreList,
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(m["title"],
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 );
               },
@@ -224,24 +431,41 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   }
 
   Widget trailerButton() {
-    if (trailerUrl == null) {
-      return Text("No Trailers", style: TextStyle(color: Colors.grey.shade400));
+    if (trailerUrl == null || trailerUrl!.length != 11) {
+      return Text(
+        "No Trailers",
+        style: TextStyle(color: Colors.grey.shade400),
+      );
     }
 
-    return ElevatedButton(
-      onPressed: () async {
-        final uri = Uri.parse(trailerUrl!);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        }
-      },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.red,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: ElevatedButton(
+        onPressed: () async {
+          final url = Uri.parse(
+              "https://www.youtube.com/watch?v=$trailerUrl");
+
+          if (await canLaunchUrl(url)) {
+            await launchUrl(
+              url,
+              mode: LaunchMode.externalApplication,
+            );
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.red,
+          padding: const EdgeInsets.symmetric(
+              horizontal: 26, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        child: const Text(
+          "Watch Trailer",
+          style:
+          TextStyle(fontSize: 16, color: Colors.white),
+        ),
       ),
-      child: const Text("Watch Trailer", style: TextStyle(fontSize: 16)),
     );
   }
 
@@ -249,9 +473,30 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
+        crossAxisAlignment:
+        CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 100, child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15))),
-          Expanded(child: Text(value, style: TextStyle(color: Colors.grey.shade300, fontSize: 14))),
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: Colors.grey.shade300,
+                fontSize: 14,
+                height: 1.35,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -260,19 +505,169 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   void showCastSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xff111111),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      backgroundColor:
+      const Color(0xff111111),
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+        BorderRadius.vertical(
+            top: Radius.circular(18)),
+      ),
       builder: (_) {
         return Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text("Full Cast", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
-            const SizedBox(height: 16),
-            ...cast.map((c) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Text(c, style: const TextStyle(fontSize: 15, color: Colors.white)),
-            )),
-          ]),
+          padding:
+          const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize:
+            MainAxisSize.min,
+            crossAxisAlignment:
+            CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Starring",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight:
+                  FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(
+                  height: 16),
+              ...cast.map(
+                    (c) => Padding(
+                  padding:
+                  const EdgeInsets.only(
+                      bottom: 10),
+                  child: Text(
+                    c,
+                    style:
+                    const TextStyle(
+                      fontSize: 15,
+                      color:
+                      Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void showReportSheet() {
+    final TextEditingController
+    controller =
+    TextEditingController();
+    String issueType =
+        "Wrong Information";
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor:
+      const Color(0xff111111),
+      shape: const RoundedRectangleBorder(
+        borderRadius:
+        BorderRadius.vertical(
+            top: Radius.circular(18)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding:
+          const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize:
+            MainAxisSize.min,
+            crossAxisAlignment:
+            CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Report an Issue",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight:
+                  FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(
+                  height: 16),
+              DropdownButtonFormField<
+                  String>(
+                value: issueType,
+                dropdownColor:
+                Colors.black,
+                items: const [
+                  DropdownMenuItem(
+                      value:
+                      "Wrong Information",
+                      child: Text(
+                          "Wrong Information")),
+                  DropdownMenuItem(
+                      value:
+                      "Trailer not playing",
+                      child: Text(
+                          "Trailer not playing")),
+                  DropdownMenuItem(
+                      value:
+                      "Wrong Poster",
+                      child: Text(
+                          "Wrong Poster")),
+                  DropdownMenuItem(
+                      value:
+                      "Other Issue",
+                      child: Text(
+                          "Other Issue")),
+                ],
+                onChanged: (v) =>
+                issueType = v!,
+              ),
+              const SizedBox(
+                  height: 12),
+              TextField(
+                controller:
+                controller,
+                maxLines: 3,
+                decoration:
+                const InputDecoration(
+                  hintText:
+                  "Describe the issue...",
+                  filled: true,
+                  fillColor:
+                  Colors.black,
+                ),
+              ),
+              const SizedBox(
+                  height: 16),
+              ElevatedButton(
+                onPressed:
+                    () async {
+                  await ReportService
+                      .submitReport(
+                    movieId:
+                    widget.data[
+                    "unique_id"] ??
+                        widget.data[
+                        "film_id"],
+                    movieName:
+                    name,
+                    issueType:
+                    issueType,
+                    message:
+                    controller
+                        .text,
+                  );
+                  if (context
+                      .mounted)
+                    Navigator.pop(
+                        context);
+                },
+                child: const Text(
+                    "Submit Report"),
+              ),
+            ],
+          ),
         );
       },
     );

@@ -1,7 +1,11 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+
+    // Firebase Google login
+    id("com.google.gms.google-services")
+
+    // Flutter plugin (last)
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -20,35 +24,43 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.bollywood.bollywood"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("upload-keystore.jks")
+            storePassword = "johnyjohny"
+            keyAlias = "upload"
+            keyPassword = "johnyjohny"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
+
         release {
             isMinifyEnabled = false
             isShrinkResources = false
+            signingConfig = signingConfigs.getByName("release")
 
-            // Still using debug signing so install works
-            signingConfig = signingConfigs.getByName("debug")
-
-            // Prevent okhttp/network stripping in release
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
-        debug {
-            signingConfig = signingConfigs.getByName("debug")
-        }
     }
+}
 
+dependencies {
+    implementation("com.google.firebase:firebase-auth:22.3.1")
+    implementation("com.google.android.gms:play-services-auth:21.0.0")
 }
 
 flutter {

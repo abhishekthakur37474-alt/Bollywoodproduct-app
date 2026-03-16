@@ -1,8 +1,21 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- 🌐 INTERNET + NETWORK -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
+    <!-- 📷 IMAGE PICKER (Android 13+) -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
+
+    <!-- 📷 IMAGE PICKER (Android ≤12) -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"/>
+
+    <!-- 🔔 NOTIFICATIONS (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!-- 🔍 REQUIRED FOR URL / TEXT HANDLING -->
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />
@@ -21,6 +34,12 @@
         android:enableOnBackInvokedCallback="true"
         android:usesCleartextTraffic="true">
 
+        <!-- 🔥 DEFAULT FCM NOTIFICATION CHANNEL (IMPORTANT) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="high_importance_channel" />
+
+        <!-- 🎬 MAIN ACTIVITY -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -41,6 +60,7 @@
             </intent-filter>
         </activity>
 
+        <!-- ⚙️ FLUTTER EMBEDDING -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />

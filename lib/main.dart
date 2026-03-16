@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'movie_page.dart';
-import 'splash_screen.dart';
+import 'screens/splash_screen.dart';
+import 'services/fcm_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  print("🟡 [MAIN] Initializing Firebase");
+  await Firebase.initializeApp();
+  print("🟢 [MAIN] Firebase initialized");
+
+  // 🔥 INIT FCM AFTER Firebase
+  await FcmService.init();
+
   runApp(const MyApp());
 }
 
@@ -14,7 +24,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: "Bollywood Films",
+      title: "Bollywood Product",
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xff0F0F0F),
@@ -28,7 +38,6 @@ class MyApp extends StatelessWidget {
         ),
       ),
       home: const SplashScreen(),
-
     );
   }
 }
