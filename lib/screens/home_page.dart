@@ -28,7 +28,8 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    print("🟢 [HOME PAGE] Using cached data");
+    print("🟢 [HOME PAGE] Loading home data...");
+    HomeService.loadAllHomeData(); // Load all data including dubbed movies
   }
 
   void _showDisclaimerModal(BuildContext context) {
@@ -118,6 +119,19 @@ class _HomePageState extends State<HomePage> {
     final id = m["film_id"] ?? m["unique_id"] ?? m["id"];
 
     return id?.toString() ?? "";
+  }
+
+  // ✅ NEW: Extract ID from dubbed movie URL
+  String _extractDubbedId(dynamic m) {
+    final url = m["dubbing_lanaguage_url"]?.toString() ?? "";
+    if (url.isEmpty) return "";
+
+    // Extract ID from URL like "https://www.bollywoodproduct.com/media-mission-118-hindi-dubbed-film-137"
+    final parts = url.split("-");
+    if (parts.isNotEmpty) {
+      return parts.last; // Get the last part which should be the ID
+    }
+    return "";
   }
 
   @override
@@ -253,7 +267,6 @@ class _HomePageState extends State<HomePage> {
     required VoidCallback onSeeAll,
   }) {
     final items = list.take(10).toList();
-    if (items.isEmpty) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.only(left: 12, top: 8),
@@ -382,55 +395,81 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-          SizedBox(
-            height: 118,
-            child: ListView.builder(
-              key: PageStorageKey(key),
-              scrollDirection: Axis.horizontal,
-              itemCount: items.length,
-              itemBuilder: (_, i) {
-                final m = items[i];
-                final isOtt = key == "ott";
-
-                final safeId = isOtt
-                    ? resolveOttId(m)
-                    : (m["unique_id"]?.toString() ?? "");
-
-                if (safeId.isEmpty) return const SizedBox.shrink();
-
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: MovieTile(
-                    id: safeId,
-                    title: DataAdapter.extractTitle(m),
-                    year: DataAdapter.extractLanguage(m),
-                    posterOverride: DataAdapter.extractPoster(m),
-                    onTap: () {
-                      if (isOtt) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => OttDetailPage(
-                              data: m,
-                              exploreList: HomeCache.ott,
-                            ),
-                          ),
-                        );
-                      } else {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                MovieDetailPage(data: m, exploreList: items),
-                          ),
-                        );
-                      }
-                    },
+          // Show loading indicator or empty state
+          if (items.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 12, bottom: 12),
+              child: Row(
+                children: [
+                  const CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Color(0xffD4AF37),
                   ),
-                );
-              },
+                  const SizedBox(width: 12),
+                  Text(
+                    "Loading $title...",
+                    style: const TextStyle(color: Colors.white60, fontSize: 14),
+                  ),
+                ],
+              ),
+            )
+          else
+            SizedBox(
+              height: 118,
+              child: ListView.builder(
+                key: PageStorageKey(key),
+                scrollDirection: Axis.horizontal,
+                itemCount: items.length,
+                itemBuilder: (_, i) {
+                  final m = items[i];
+                  final isOtt = key == "ott";
+                  final isDubbed = key == "dubbed";
+
+                  final safeId = isOtt
+                      ? resolveOttId(m)
+                      : isDubbed
+                      ? _extractDubbedId(m)
+                      : (m["unique_id"]?.toString() ?? "");
+
+                  if (safeId.isEmpty) return const SizedBox.shrink();
+
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: MovieTile(
+                      id: safeId,
+                      title: DataAdapter.extractTitle(m),
+                      year: isDubbed
+                          ? DataAdapter.extractDubbedLanguage(m)
+                          : DataAdapter.extractLanguage(m),
+                      posterOverride: isDubbed
+                          ? null
+                          : DataAdapter.extractPoster(m),
+                      onTap: () {
+                        if (isOtt) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => OttDetailPage(
+                                data: m,
+                                exploreList: HomeCache.ott,
+                              ),
+                            ),
+                          );
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  MovieDetailPage(data: m, exploreList: items),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
         ],
       ),
     );

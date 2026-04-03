@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../widgets/app_drawer.dart';
 import '../widgets/movie_tile.dart';
 import '../utils/data_adapter.dart';
@@ -19,13 +21,106 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<dynamic> _searchResults = [];
+  List<dynamic> _suggestions = [];
   bool _isLoading = false;
   bool _isSearched = false;
+  bool _showSuggestions = false;
+  final Map<String, String?> _posterCache = {};
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    if (query.trim().isEmpty) {
+      setState(() {
+        _suggestions.clear();
+        _showSuggestions = false;
+      });
+      return;
+    }
+
+    _getSuggestions(query);
+  }
+
+  void _getSuggestions(String query) {
+    final allMovies = [
+      ...HomeCache.latest,
+      ...HomeCache.upcoming,
+      ...HomeCache.full,
+      ...HomeCache.ott,
+      ...HomeCache.dubbed,
+    ];
+
+    final suggestions = allMovies
+        .where((movie) {
+          final title = DataAdapter.extractTitle(movie).toLowerCase().trim();
+          final language = DataAdapter.extractLanguage(
+            movie,
+          ).toLowerCase().trim();
+          final searchQuery = query.toLowerCase().trim();
+
+          return title.contains(searchQuery) || language.contains(searchQuery);
+        })
+        .take(5)
+        .toList(); // Limit to 5 suggestions
+
+    setState(() {
+      _suggestions = suggestions;
+      _showSuggestions = true;
+    });
+  }
+
+  Future<String?> _getMoviePoster(dynamic movie) async {
+    final uniqueId = movie["unique_id"]?.toString();
+    if (uniqueId == null) return null;
+
+    // Check cache first
+    if (_posterCache.containsKey(uniqueId)) {
+      return _posterCache[uniqueId];
+    }
+
+    // Try direct poster extraction first
+    final directPoster = DataAdapter.extractPoster(movie);
+    if (directPoster != null) {
+      _posterCache[uniqueId] = directPoster;
+      return directPoster;
+    }
+
+    // Try API call for poster
+    try {
+      final res = await http.get(
+        Uri.parse(
+          "https://hindi.bollywoodproduct.com/api-film-details.php?unique_id=$uniqueId",
+        ),
+      );
+
+      if (res.statusCode == 200 && res.body.startsWith("{")) {
+        final raw = jsonDecode(res.body);
+        String? posterUrl;
+
+        // Try YouTube image from trailers
+        if (raw["trailers"] is List && raw["trailers"].isNotEmpty) {
+          posterUrl = raw["trailers"][0]["youtube_image_url"];
+        }
+
+        // Try direct poster fields
+        if (posterUrl == null || posterUrl.isEmpty) {
+          posterUrl =
+              raw["film_image"] ?? raw["poster_image_url"] ?? raw["poster"];
+        }
+
+        _posterCache[uniqueId] = posterUrl;
+        return posterUrl;
+      }
+    } catch (e) {
+      print("Error fetching poster for $uniqueId: $e");
+    }
+
+    _posterCache[uniqueId] = null;
+    return null;
   }
 
   Future<void> _searchMovies(String query) async {
@@ -90,22 +185,145 @@ class _SearchScreenState extends State<SearchScreen> {
               onPressed: () => _searchMovies(_searchController.text),
             ),
           ),
-          onSubmitted: (value) => _searchMovies(value),
+          onChanged: _onSearchChanged,
+          onSubmitted: (value) {
+            setState(() {
+              _showSuggestions = false;
+            });
+            _searchMovies(value);
+          },
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            setState(() {
+              _showSuggestions = false;
+            });
+            Navigator.pop(context);
+          },
         ),
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Color(0xffD4AF37)),
-            )
-          : !_isSearched
-          ? _buildInitialScreen()
-          : _searchResults.isEmpty
-          ? _buildNoResultsScreen()
-          : _buildResultsScreen(),
+      body: Stack(
+        children: [
+          _isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(color: Color(0xffD4AF37)),
+                )
+              : !_isSearched
+              ? _buildInitialScreen()
+              : _searchResults.isEmpty
+              ? _buildNoResultsScreen()
+              : _buildResultsScreen(),
+          if (_showSuggestions && _suggestions.isNotEmpty)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                color: const Color(0xff0F0F0F),
+                // constraints: const BoxConstraints(maxHeight: 300),
+                // margin: const EdgeInsets.only(top: 8),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(12),
+                    bottomRight: Radius.circular(12),
+                  ),
+                  child: Container(
+                    color: Colors.black.withOpacity(0.95),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.search,
+                                  color: Colors.white.withOpacity(0.7),
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "Suggestions (${_suggestions.length})",
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          ..._suggestions.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final movie = entry.value;
+                            final title = DataAdapter.extractTitle(movie);
+                            final isLast = index == _suggestions.length - 1;
+
+                            return Column(
+                              children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _showSuggestions = false;
+                                      _searchController.text = title;
+                                    });
+                                    _searchMovies(title);
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                      horizontal: 16,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.movie,
+                                          color: Colors.white.withOpacity(0.6),
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            title,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        Icon(
+                                          Icons.arrow_forward_ios,
+                                          color: Colors.white.withOpacity(0.4),
+                                          size: 14,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                if (!isLast)
+                                  Divider(
+                                    height: 1,
+                                    color: Colors.white.withOpacity(0.1),
+                                  ),
+                              ],
+                            );
+                          }).toList(),
+                          const SizedBox(height: 12),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -212,35 +430,72 @@ class _SearchScreenState extends State<SearchScreen> {
                   borderRadius: BorderRadius.circular(12),
                   child: AspectRatio(
                     aspectRatio: 16 / 9,
-                    child: Image.network(
-                      DataAdapter.extractPoster(movie) ??
-                          "https://via.placeholder.com/640x360/1a1a1a/ffffff?text=No+Image",
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xff1a1a1a),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          alignment: Alignment.center,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.movie,
-                                color: Colors.white.withOpacity(0.4),
-                                size: 48,
+                    child: FutureBuilder<String?>(
+                      future: _getMoviePoster(movie),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xff1a1a1a),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xffD4AF37),
+                                strokeWidth: 2,
                               ),
-                              const SizedBox(height: 8),
-                              Text(
-                                "Poster not available",
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.4),
-                                  fontSize: 12,
+                            ),
+                          );
+                        }
+
+                        final posterUrl = snapshot.data;
+                        return Image.network(
+                          posterUrl ??
+                              "https://via.placeholder.com/640x360/1a1a1a/ffffff?text=No+Image",
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xff1a1a1a),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  color: Color(0xffD4AF37),
+                                  strokeWidth: 2,
                                 ),
                               ),
-                            ],
-                          ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xff1a1a1a),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              alignment: Alignment.center,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.movie,
+                                    color: Colors.white.withOpacity(0.4),
+                                    size: 48,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    "Poster not available",
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.4),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         );
                       },
                     ),

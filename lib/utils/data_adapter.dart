@@ -1,6 +1,7 @@
 class DataAdapter {
   static String extractTitle(dynamic item) {
-    return item["film_name"] ??
+    return item["dubbed_film_name"] ?? // ✅ DUBBED MOVIES
+        item["film_name"] ??
         item["name"] ??
         item["title"] ??
         item["movie_name"] ??
@@ -14,22 +15,39 @@ class DataAdapter {
         item["poster_image_url"] ??
         item["poster"] ??
         item["image"] ??
-        item["thumbnail"];
+        item["thumbnail"] ??
+        item["poster_url"] ??
+        item["movie_poster"];
 
     if (poster != null && poster.toString().trim().isNotEmpty) {
-      return poster.toString();
+      String posterUrl = poster.toString();
+      // Fix YouTube URL format
+      if (posterUrl.startsWith("https://img.youtube.com/")) {
+        posterUrl = posterUrl.replaceFirst("https://", "https://");
+      }
+      print("🟢 [POSTER] Found poster: $posterUrl");
+      return posterUrl;
     }
 
     // Try YouTube image URL
     final youtubeImage = item["youtube_image_url"];
     if (youtubeImage != null && youtubeImage.toString().trim().isNotEmpty) {
-      return youtubeImage.toString();
+      String youtubeUrl = youtubeImage.toString();
+      // Fix YouTube URL format
+      if (youtubeUrl.startsWith("https://img.youtube.com/")) {
+        youtubeUrl = youtubeUrl.replaceFirst("https://", "https://");
+      }
+      print("🟢 [POSTER] Found YouTube image: $youtubeUrl");
+      return youtubeUrl;
     }
 
     // Extract YouTube ID and generate thumbnail URL
     final youtubeId = extractYoutubeId(item);
     if (youtubeId != null) {
-      return "https://img.youtube.com/vi/$youtubeId/0.jpg";
+      final thumbnailUrl =
+          "https://img.youtube.com/vi/$youtubeId/hqdefault.jpg";
+      print("🟢 [POSTER] Generated YouTube thumbnail: $thumbnailUrl");
+      return thumbnailUrl;
     }
 
     // Try trailers array for YouTube ID
@@ -38,27 +56,103 @@ class DataAdapter {
       for (final trailer in trailers) {
         final ytId = extractYoutubeId(trailer);
         if (ytId != null) {
-          return "https://img.youtube.com/vi/$ytId/0.jpg";
+          final thumbnailUrl = "https://img.youtube.com/vi/$ytId/hqdefault.jpg";
+          print("🟢 [POSTER] Found YouTube from trailers: $thumbnailUrl");
+          return thumbnailUrl;
         }
       }
     }
 
+    // For movies with no poster info, try to get from API using unique_id
+    final uniqueId = item["unique_id"]?.toString();
+    if (uniqueId != null && uniqueId.isNotEmpty) {
+      print(
+        "🟡 [POSTER] No direct poster found, will try API for ID: $uniqueId",
+      );
+      // Return null to trigger API call in MovieListTile
+      return null;
+    }
+
+    print("🔴 [POSTER] No poster found for item: ${item.keys.toList()}");
     return null;
+  }
+
+  static String? _parseLanguages(String? langStr) {
+    if (langStr == null || langStr.trim().isEmpty) return null;
+
+    // Check if it consists of numeric codes separated by commas or spaces
+    final isCodes = RegExp(r'^[\d,\s]+$').hasMatch(langStr);
+
+    if (isCodes) {
+      final codes = langStr.replaceAll(RegExp(r'[^0-9,]'), '').split(',');
+      final langs = codes
+          .where((c) => c.trim().isNotEmpty)
+          .map((code) => _mapLanguageCode(code.trim()))
+          .toSet()
+          .toList();
+
+      if (langs.isNotEmpty) {
+        return langs.join(", ");
+      }
+    }
+
+    return langStr.trim();
   }
 
   /// ✅ NEW: LANGUAGE EXTRACTOR
   static String extractLanguage(dynamic item) {
-    final lang =
+    // First try main_lang field (numeric code)
+    final mainLang = _parseLanguages(item["main_lang"]?.toString());
+    if (mainLang != null && mainLang.isNotEmpty) {
+      return mainLang;
+    }
+
+    // Then try other language fields
+    final langStr =
         item["language"] ??
         item["movie_language"] ??
         item["lang"] ??
         item["film_language"];
 
-    if (lang == null || lang.toString().trim().isEmpty) {
-      return "Hindi"; // ✅ sensible default
+    final parsedLang = _parseLanguages(langStr?.toString());
+    if (parsedLang != null && parsedLang.isNotEmpty) {
+      return parsedLang;
     }
 
-    return lang.toString();
+    return "Hindi"; // ✅ sensible default
+  }
+
+  /// ✅ NEW: MAP LANGUAGE CODE TO LANGUAGE NAME
+  static String _mapLanguageCode(String code) {
+    final langMap = {
+      "3": "English",
+      "5": "Hindi",
+      "20": "Tamil",
+      "21": "Malayalam",
+      "22": "Bhojpuri",
+      "25": "Telugu",
+      "26": "Kannada",
+      "30": "Spanish",
+    };
+
+    return langMap[code] ?? "Hindi"; // Default to Hindi if code not found
+  }
+
+  /// ✅ NEW: DUBBED LANGUAGE EXTRACTOR
+  static String extractDubbedLanguage(dynamic item) {
+    final dubbedLangStr =
+        item["dubbed_film_language"] ??
+        item["dubbed_language"] ??
+        item["dubbed_in"] ??
+        item["dubbed"] ??
+        item["audio_language"];
+
+    final parsedDubbed = _parseLanguages(dubbedLangStr?.toString());
+    if (parsedDubbed != null && parsedDubbed.isNotEmpty) {
+      return parsedDubbed;
+    }
+
+    return extractLanguage(item); // Fallback to regular language
   }
 
   static String extractYear(dynamic item) {

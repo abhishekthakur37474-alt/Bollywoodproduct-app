@@ -44,10 +44,8 @@ class _FullMoviesPageState extends State<FullMoviesPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => MovieDetailPage(
-                    data: m,
-                    exploreList: _allFullMovies,
-                  ),
+                  builder: (_) =>
+                      MovieDetailPage(data: m, exploreList: _allFullMovies),
                 ),
               );
             },

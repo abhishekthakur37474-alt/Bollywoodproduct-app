@@ -16,8 +16,7 @@ class TrailerService {
     return list.where((m) {
       final title = (m["film_name"] ?? "").toString().toLowerCase();
       final cat = (m["category"] ?? "").toString().toLowerCase();
-      return !title.contains("full movie") &&
-          !cat.contains("full movie");
+      return !title.contains("full movie") && !cat.contains("full movie");
     }).toList();
   }
 
@@ -41,11 +40,14 @@ class TrailerService {
     for (var item in rawList) {
       final title = (item["film_name"] ?? "").toString();
       final language = (item["language"] ?? "Hindi").toString();
+      final trailerCategory = (item["trailer_category"] ?? "Trailer")
+          .toString();
 
       if (!grouped.containsKey(title)) {
         grouped[title] = {
           "film_name": title,
-          "languages": [language],
+          "languages": <String>{language},
+          "trailer_category": trailerCategory,
           "trailers": [item],
         };
       } else {
@@ -54,9 +56,10 @@ class TrailerService {
       }
     }
 
-    return grouped.values.toList();
+    // Convert Set to List for JSON serialization
+    return grouped.values.map((group) {
+      group["languages"] = (group["languages"] as Set<String>).toList();
+      return group;
+    }).toList();
   }
-
-
-
 }

@@ -44,8 +44,7 @@ class _PaginatedListState extends State<PaginatedList> {
     print("🟢 [PAGINATION] Total items: ${allItems.length}");
   }
 
-  int get totalPages =>
-      (allItems.length / widget.pageSize).ceil();
+  int get totalPages => (allItems.length / widget.pageSize).ceil();
 
   List get pageItems {
     final start = (currentPage - 1) * widget.pageSize;
@@ -138,18 +137,15 @@ class _PaginatedListState extends State<PaginatedList> {
                               print("🟢 [PAGINATION] Page $page");
                             },
                             child: AnimatedContainer(
-                              duration:
-                              const Duration(milliseconds: 220),
-                              margin:
-                              const EdgeInsets.symmetric(horizontal: 6),
+                              duration: const Duration(milliseconds: 220),
+                              margin: const EdgeInsets.symmetric(horizontal: 6),
                               width: 38,
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
                                 color: active
                                     ? const Color(0xffD4AF37)
                                     : Colors.transparent,
-                                borderRadius:
-                                BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
                                   color: active
                                       ? Colors.transparent
@@ -160,9 +156,7 @@ class _PaginatedListState extends State<PaginatedList> {
                                 "$page",
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  color: active
-                                      ? Colors.black
-                                      : Colors.white,
+                                  color: active ? Colors.black : Colors.white,
                                 ),
                               ),
                             ),
@@ -211,9 +205,7 @@ class _PaginatedListState extends State<PaginatedList> {
         child: Icon(
           icon,
           size: 22,
-          color: enabled
-              ? const Color(0xffD4AF37)
-              : Colors.white24,
+          color: enabled ? const Color(0xffD4AF37) : Colors.white24,
         ),
       ),
     );

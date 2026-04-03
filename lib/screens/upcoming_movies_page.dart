@@ -44,10 +44,8 @@ class _UpcomingMoviesPageState extends State<UpcomingMoviesPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => MovieDetailPage(
-                    data: m,
-                    exploreList: _allUpcoming,
-                  ),
+                  builder: (_) =>
+                      MovieDetailPage(data: m, exploreList: _allUpcoming),
                 ),
               );
             },

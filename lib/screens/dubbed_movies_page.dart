@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../widgets/app_drawer.dart';
-import '../widgets/movie_tile.dart';
+import '../widgets/movie_list_tile.dart';
 import '../utils/data_adapter.dart';
-import '../utils/home_cache.dart';
+import '../utils/paginated_list.dart';
 import '../services/dubbed_service.dart';
+import '../utils/home_cache.dart';
 import 'movie_detail_page.dart';
 
 class DubbedMoviesPage extends StatefulWidget {
@@ -14,19 +15,24 @@ class DubbedMoviesPage extends StatefulWidget {
 }
 
 class _DubbedMoviesPageState extends State<DubbedMoviesPage> {
-  bool isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadDubbedMovies();
+  Future<List> fetch() async {
+    final list = await DubbedService.fetchDubbed();
+    // Store in HomeCache for exploreList
+    HomeCache.dubbed = list;
+    return list;
   }
 
-  Future<void> _loadDubbedMovies() async {
-    await DubbedService.fetchDubbed();
-    setState(() {
-      isLoading = false;
-    });
+  // Extract ID from dubbed movie URL
+  String _extractDubbedId(dynamic m) {
+    final url = m["dubbing_lanaguage_url"]?.toString() ?? "";
+    if (url.isEmpty) return "";
+
+    // Extract ID from URL like "https://www.bollywoodproduct.com/media-mission-118-hindi-dubbed-film-137"
+    final parts = url.split("-");
+    if (parts.isNotEmpty) {
+      return parts.last; // Get the last part which should be the ID
+    }
+    return "";
   }
 
   @override
@@ -48,51 +54,30 @@ class _DubbedMoviesPageState extends State<DubbedMoviesPage> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Color(0xffD4AF37)),
-            )
-          : HomeCache.dubbed.isEmpty
-              ? const Center(
-                  child: Text(
-                    "No dubbed movies available",
-                    style: TextStyle(color: Colors.white54),
-                  ),
-                )
-              : GridView.builder(
-                  padding: const EdgeInsets.all(12),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    childAspectRatio: 16 / 9,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 8,
-                  ),
-                  itemCount: HomeCache.dubbed.length,
-                  itemBuilder: (context, index) {
-                    final movie = HomeCache.dubbed[index];
-                    final safeId = movie["unique_id"]?.toString() ?? "";
+      body: PaginatedList(
+        pageSize: 15,
+        fetch: fetch,
+        builder: (m) {
+          final safeId = _extractDubbedId(m);
+          if (safeId.isEmpty) return const SizedBox.shrink();
 
-                    if (safeId.isEmpty) return const SizedBox.shrink();
-
-                    return MovieTile(
-                      id: safeId,
-                      title: DataAdapter.extractTitle(movie),
-                      year: DataAdapter.extractLanguage(movie),
-                      posterOverride: DataAdapter.extractPoster(movie),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => MovieDetailPage(
-                              data: movie,
-                              exploreList: HomeCache.dubbed,
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
+          return MovieListTile(
+            id: safeId,
+            title: DataAdapter.extractTitle(m),
+            language: DataAdapter.extractDubbedLanguage(m),
+            posterOverride: null, // Force API call for posters
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      MovieDetailPage(data: m, exploreList: HomeCache.dubbed),
                 ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }

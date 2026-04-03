@@ -59,14 +59,6 @@ class _MovieTileState extends State<MovieTile> {
     if (mounted) setState(() {});
   }
 
-  @override
-  Widget _fallbackPoster() {
-    return Container(
-      color: Colors.grey.shade900,
-      child: Center(child: Icon(Icons.movie, color: Colors.white30, size: 28)),
-    );
-  }
-
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: widget.onTap,
@@ -82,27 +74,73 @@ class _MovieTileState extends State<MovieTile> {
               child: SizedBox(
                 height: 76, // 🔥 16:9 ratio (135 * 9 / 16 = 76)
                 width: double.infinity,
-                child: poster == null
+                child: poster == null || poster!.isEmpty
                     ? Container(
-                        color: Colors.white10,
-                        child: loadingPoster
-                            ? const Center(
-                                child: SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 1.5,
-                                    color: Color(0xffD4AF37),
-                                  ),
+                        color: Colors.grey.shade900,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Image.asset(
+                                "assets/images/logo.jpeg",
+                                height: 32,
+                                width: 32,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(
+                                    Icons.movie,
+                                    color: Colors.white30,
+                                    size: 28,
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                "Bollywood Product",
+                                style: TextStyle(
+                                  color: Colors.white30,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w500,
                                 ),
-                              )
-                            : const SizedBox(),
+                              ),
+                            ],
+                          ),
+                        ),
                       )
                     : Image.network(
                         poster!,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
-                          return _fallbackPoster();
+                          return Container(
+                            color: Colors.grey.shade900,
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Image.asset(
+                                    "assets/images/logo.jpeg",
+                                    height: 32,
+                                    width: 32,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Icon(
+                                        Icons.movie,
+                                        color: Colors.white30,
+                                        size: 28,
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "Bollywood Product",
+                                    style: TextStyle(
+                                      color: Colors.white30,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
                         },
                       ),
               ),

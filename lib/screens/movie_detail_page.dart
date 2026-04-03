@@ -38,7 +38,6 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   String cbfcNumber = "";
   String cbfcDate = "";
 
-
   String? poster;
   String? trailerUrl;
 
@@ -72,7 +71,6 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     }
 
     fetchDetails();
-
   }
 
   String get starringShort {
@@ -81,8 +79,8 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   }
 
   List get exploreFive {
-    final currentId =
-    (widget.data["unique_id"] ?? widget.data["film_id"])?.toString();
+    final currentId = (widget.data["unique_id"] ?? widget.data["film_id"])
+        ?.toString();
 
     final filtered = widget.exploreList.where((m) {
       final id = (m["unique_id"] ?? m["film_id"])?.toString();
@@ -104,7 +102,8 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     try {
       final res = await http.get(
         Uri.parse(
-            "https://hindi.bollywoodproduct.com/api-film-details.php?unique_id=$id"),
+          "https://hindi.bollywoodproduct.com/api-film-details.php?unique_id=$id",
+        ),
       );
 
       if (res.statusCode != 200 || !res.body.trim().startsWith('{')) {
@@ -126,7 +125,8 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       // 🔥 FETCH CBFC DATA
       // 🔥 FETCH CBFC DATA (DO NOT OVERWRITE LIST API DATA)
 
-      if (raw["cbfc_rating"] != null && raw["cbfc_rating"].toString().isNotEmpty) {
+      if (raw["cbfc_rating"] != null &&
+          raw["cbfc_rating"].toString().isNotEmpty) {
         cbfcRating = raw["cbfc_rating"].toString();
       }
 
@@ -142,7 +142,6 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       if (d.isNotEmpty && m.isNotEmpty && y.isNotEmpty) {
         cbfcDate = "$d/$m/$y";
       }
-
 
       if (raw["trailers"] is List && raw["trailers"].isNotEmpty) {
         final t = raw["trailers"][0];
@@ -161,8 +160,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       final schemaRaw = raw["schema"];
       if (schemaRaw is String && schemaRaw.contains("{")) {
         for (final part in schemaRaw.split("</script>")) {
-          final clean =
-          part.replaceAll(RegExp(r'<script[^>]*>'), '').trim();
+          final clean = part.replaceAll(RegExp(r'<script[^>]*>'), '').trim();
           if (!clean.startsWith("{")) continue;
 
           final schema = jsonDecode(clean);
@@ -180,14 +178,12 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
           if (dir is Map && dir["name"] != null) {
             director = dir["name"];
           } else if (dir is List) {
-            director =
-                dir.map((d) => d["name"]).whereType<String>().join(", ");
+            director = dir.map((d) => d["name"]).whereType<String>().join(", ");
           }
 
           final actors = schema["actor"];
           if (actors is List) {
-            cast =
-                actors.map((a) => a["name"]).whereType<String>().toList();
+            cast = actors.map((a) => a["name"]).whereType<String>().toList();
           } else if (actors is Map && actors["name"] != null) {
             cast = [actors["name"]];
           }
@@ -210,8 +206,8 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       backgroundColor: const Color(0xff0F0F0F),
       body: loading
           ? const Center(
-        child: CircularProgressIndicator(color: Color(0xffD4AF37)),
-      )
+              child: CircularProgressIndicator(color: Color(0xffD4AF37)),
+            )
           : buildContent(),
     );
   }
@@ -224,8 +220,10 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
           pinned: true,
           backgroundColor: Colors.black,
           flexibleSpace: FlexibleSpaceBar(
-            titlePadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            titlePadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
             title: Text(
               name,
               maxLines: 1,
@@ -297,7 +295,10 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.redAccent,
                             borderRadius: BorderRadius.circular(6),
@@ -337,7 +338,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                 const SizedBox(height: 26),
 
                 const Text(
-                  "Trailers",
+                  "Movies",
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w600,
@@ -353,8 +354,11 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: const [
-                      Icon(Icons.flag_outlined,
-                          size: 16, color: Colors.redAccent),
+                      Icon(
+                        Icons.flag_outlined,
+                        size: 16,
+                        color: Colors.redAccent,
+                      ),
                       SizedBox(width: 6),
                       Text(
                         "Report an issue",
@@ -393,29 +397,25 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
             height: 190,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              padding:
-              const EdgeInsets.symmetric(horizontal: 22),
+              padding: const EdgeInsets.symmetric(horizontal: 22),
               itemCount: exploreFive.length,
               itemBuilder: (context, i) {
                 final m = exploreFive[i];
                 return Container(
                   width: 140,
-                  margin:
-                  const EdgeInsets.only(right: 12),
+                  margin: const EdgeInsets.only(right: 12),
                   child: MovieTile(
                     id: m["unique_id"],
                     title: DataAdapter.extractTitle(m),
                     year: DataAdapter.extractYear(m),
-                    posterOverride:
-                    DataAdapter.extractPoster(m),
+                    posterOverride: DataAdapter.extractPoster(m),
                     onTap: () {
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
                           builder: (_) => MovieDetailPage(
                             data: m,
-                            exploreList:
-                            widget.exploreList,
+                            exploreList: widget.exploreList,
                           ),
                         ),
                       );
@@ -433,7 +433,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   Widget trailerButton() {
     if (trailerUrl == null || trailerUrl!.length != 11) {
       return Text(
-        "No Trailers",
+        "No Movies Available",
         style: TextStyle(color: Colors.grey.shade400),
       );
     }
@@ -442,28 +442,22 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       alignment: Alignment.centerLeft,
       child: ElevatedButton(
         onPressed: () async {
-          final url = Uri.parse(
-              "https://www.youtube.com/watch?v=$trailerUrl");
+          final url = Uri.parse("https://www.youtube.com/watch?v=$trailerUrl");
 
           if (await canLaunchUrl(url)) {
-            await launchUrl(
-              url,
-              mode: LaunchMode.externalApplication,
-            );
+            await launchUrl(url, mode: LaunchMode.externalApplication);
           }
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.red,
-          padding: const EdgeInsets.symmetric(
-              horizontal: 26, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
         ),
         child: const Text(
-          "Watch Trailer",
-          style:
-          TextStyle(fontSize: 16, color: Colors.white),
+          "Watch Movie",
+          style: TextStyle(fontSize: 16, color: Colors.white),
         ),
       ),
     );
@@ -473,8 +467,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 110,
@@ -505,47 +498,32 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   void showCastSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor:
-      const Color(0xff111111),
+      backgroundColor: const Color(0xff111111),
       shape: const RoundedRectangleBorder(
-        borderRadius:
-        BorderRadius.vertical(
-            top: Radius.circular(18)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
       builder: (_) {
         return Padding(
-          padding:
-          const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           child: Column(
-            mainAxisSize:
-            MainAxisSize.min,
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 "Starring",
                 style: TextStyle(
                   fontSize: 20,
-                  fontWeight:
-                  FontWeight.w700,
+                  fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(
-                  height: 16),
+              const SizedBox(height: 16),
               ...cast.map(
-                    (c) => Padding(
-                  padding:
-                  const EdgeInsets.only(
-                      bottom: 10),
+                (c) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
                   child: Text(
                     c,
-                    style:
-                    const TextStyle(
-                      fontSize: 15,
-                      color:
-                      Colors.white,
-                    ),
+                    style: const TextStyle(fontSize: 15, color: Colors.white),
                   ),
                 ),
               ),
@@ -557,114 +535,76 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   }
 
   void showReportSheet() {
-    final TextEditingController
-    controller =
-    TextEditingController();
-    String issueType =
-        "Wrong Information";
+    final TextEditingController controller = TextEditingController();
+    String issueType = "Wrong Information";
 
     showModalBottomSheet(
       context: context,
-      backgroundColor:
-      const Color(0xff111111),
+      backgroundColor: const Color(0xff111111),
       shape: const RoundedRectangleBorder(
-        borderRadius:
-        BorderRadius.vertical(
-            top: Radius.circular(18)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
       builder: (_) {
         return Padding(
-          padding:
-          const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           child: Column(
-            mainAxisSize:
-            MainAxisSize.min,
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 "Report an Issue",
                 style: TextStyle(
                   fontSize: 20,
-                  fontWeight:
-                  FontWeight.w700,
+                  fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(
-                  height: 16),
-              DropdownButtonFormField<
-                  String>(
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
                 value: issueType,
-                dropdownColor:
-                Colors.black,
+                dropdownColor: Colors.black,
                 items: const [
                   DropdownMenuItem(
-                      value:
-                      "Wrong Information",
-                      child: Text(
-                          "Wrong Information")),
+                    value: "Wrong Information",
+                    child: Text("Wrong Information"),
+                  ),
                   DropdownMenuItem(
-                      value:
-                      "Trailer not playing",
-                      child: Text(
-                          "Trailer not playing")),
+                    value: "Trailer not playing",
+                    child: Text("Trailer not playing"),
+                  ),
                   DropdownMenuItem(
-                      value:
-                      "Wrong Poster",
-                      child: Text(
-                          "Wrong Poster")),
+                    value: "Wrong Poster",
+                    child: Text("Wrong Poster"),
+                  ),
                   DropdownMenuItem(
-                      value:
-                      "Other Issue",
-                      child: Text(
-                          "Other Issue")),
+                    value: "Other Issue",
+                    child: Text("Other Issue"),
+                  ),
                 ],
-                onChanged: (v) =>
-                issueType = v!,
+                onChanged: (v) => issueType = v!,
               ),
-              const SizedBox(
-                  height: 12),
+              const SizedBox(height: 12),
               TextField(
-                controller:
-                controller,
+                controller: controller,
                 maxLines: 3,
-                decoration:
-                const InputDecoration(
-                  hintText:
-                  "Describe the issue...",
+                decoration: const InputDecoration(
+                  hintText: "Describe the issue...",
                   filled: true,
-                  fillColor:
-                  Colors.black,
+                  fillColor: Colors.black,
                 ),
               ),
-              const SizedBox(
-                  height: 16),
+              const SizedBox(height: 16),
               ElevatedButton(
-                onPressed:
-                    () async {
-                  await ReportService
-                      .submitReport(
-                    movieId:
-                    widget.data[
-                    "unique_id"] ??
-                        widget.data[
-                        "film_id"],
-                    movieName:
-                    name,
-                    issueType:
-                    issueType,
-                    message:
-                    controller
-                        .text,
+                onPressed: () async {
+                  await ReportService.submitReport(
+                    movieId: widget.data["unique_id"] ?? widget.data["film_id"],
+                    movieName: name,
+                    issueType: issueType,
+                    message: controller.text,
                   );
-                  if (context
-                      .mounted)
-                    Navigator.pop(
-                        context);
+                  if (context.mounted) Navigator.pop(context);
                 },
-                child: const Text(
-                    "Submit Report"),
+                child: const Text("Submit Report"),
               ),
             ],
           ),

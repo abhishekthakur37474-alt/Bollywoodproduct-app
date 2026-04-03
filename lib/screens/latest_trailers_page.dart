@@ -5,26 +5,39 @@ import '../utils/paginated_list.dart';
 import '../utils/data_adapter.dart';
 import 'trailer_detail_page.dart';
 
-class LatestTrailersPage extends StatelessWidget {
+class LatestTrailersPage extends StatefulWidget {
   const LatestTrailersPage({super.key});
 
+  @override
+  State<LatestTrailersPage> createState() => _LatestTrailersPageState();
+}
+
+class _LatestTrailersPageState extends State<LatestTrailersPage>
+    with AutomaticKeepAliveClientMixin {
   Future<List> fetch() => TrailerService.fetchLatestTrailers();
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
     return PaginatedList(
       pageSize: 15,
       fetch: fetch,
       builder: (m) {
         final title = m["film_name"] ?? "Trailer";
 
-        final languages = (m["languages"] as List?)
-            ?.map((e) => e.toString())
-            .toSet()
-            .toList() ??
+        final languages =
+            (m["languages"] as List?)
+                ?.map((e) => e.toString())
+                .toSet()
+                .toList() ??
             ["Hindi"];
 
-        final languageText = languages.join(", ");
+        final languageText = languages.first; // Only first language
+
+        final trailerCategory = m["trailer_category"] ?? "Trailer";
 
         String? poster;
 
@@ -54,9 +67,7 @@ class LatestTrailersPage extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => TrailerDetailPage(data: m),
-                ),
+                MaterialPageRoute(builder: (_) => TrailerDetailPage(data: m)),
               );
             },
             child: Column(
@@ -80,10 +91,7 @@ class LatestTrailersPage extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     child: AspectRatio(
                       aspectRatio: 16 / 9,
-                      child: Image.network(
-                        poster,
-                        fit: BoxFit.cover,
-                      ),
+                      child: Image.network(poster, fit: BoxFit.cover),
                     ),
                   )
                 else
@@ -105,7 +113,7 @@ class LatestTrailersPage extends StatelessWidget {
 
                 /// ✅ LANGUAGE + CATEGORY LAST (LIKE BEFORE)
                 Text(
-                  "$languageText • Trailer",
+                  "$languageText • $trailerCategory",
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.white.withOpacity(0.6),

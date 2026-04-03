@@ -7,9 +7,15 @@ import '../widgets/movie_list_tile.dart';
 import 'ott_detail_page.dart';
 import '../utils/home_cache.dart';
 
-class OttMoviesPage extends StatelessWidget {
+class OttMoviesPage extends StatefulWidget {
   const OttMoviesPage({super.key});
 
+  @override
+  State<OttMoviesPage> createState() => _OttMoviesPageState();
+}
+
+class _OttMoviesPageState extends State<OttMoviesPage>
+    with AutomaticKeepAliveClientMixin {
   static List _allOttFilms = [];
 
   Future<List> fetch() async {
@@ -24,10 +30,7 @@ class OttMoviesPage extends StatelessWidget {
   }
 
   String resolveLanguage(dynamic m) {
-    final lang =
-        m["language"] ??
-            m["film_language"] ??
-            m["lang"];
+    final lang = m["language"] ?? m["film_language"] ?? m["lang"];
 
     return (lang == null || lang.toString().trim().isEmpty)
         ? "Hindi"
@@ -35,7 +38,11 @@ class OttMoviesPage extends StatelessWidget {
   }
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.black,
@@ -67,10 +74,8 @@ class OttMoviesPage extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => OttDetailPage(
-                      data: m,
-                      exploreList: _allOttFilms,
-                    ),
+                    builder: (_) =>
+                        OttDetailPage(data: m, exploreList: _allOttFilms),
                   ),
                 );
               },

@@ -33,25 +33,39 @@ class _MovieListTileState extends State<MovieListTile> {
   }
 
   Future<void> _loadPoster() async {
-    if (widget.posterOverride != null) {
+    print(" [MOVIE TILE] Loading poster for ID: ${widget.id}");
+    print(" [MOVIE TILE] PosterOverride: ${widget.posterOverride}");
+
+    // If posterOverride is available, use it directly
+    if (widget.posterOverride != null && widget.posterOverride!.isNotEmpty) {
+      print(" [MOVIE TILE] Using posterOverride: ${widget.posterOverride}");
       poster = widget.posterOverride;
       loading = false;
       setState(() {});
       return;
     }
 
+    print(" [MOVIE TILE] No posterOverride, making API call...");
+
+    // Only make API call if no poster is available
     try {
-      final res = await http.get(Uri.parse(
-        "https://hindi.bollywoodproduct.com/api-film-details.php?unique_id=${widget.id}",
-      ));
+      final res = await http.get(
+        Uri.parse(
+          "https://hindi.bollywoodproduct.com/api-film-details.php?unique_id=${widget.id}",
+        ),
+      );
 
       if (res.statusCode == 200 && res.body.startsWith("{")) {
         final raw = jsonDecode(res.body);
+        print(" [MOVIE TILE] API response keys: ${raw.keys.toList()}");
         if (raw["trailers"] is List && raw["trailers"].isNotEmpty) {
           poster = raw["trailers"][0]["youtube_image_url"];
+          print(" [MOVIE TILE] Found poster from API: $poster");
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      print(" [MOVIE TILE] API call failed: $e");
+    }
 
     loading = false;
     if (mounted) setState(() {});
@@ -66,44 +80,80 @@ class _MovieListTileState extends State<MovieListTile> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// 🎬 POSTER (BALANCED SIZE – LIKE OLD DESIGN)
+            /// POSTER (BALANCED SIZE – LIKE OLD DESIGN)
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: AspectRatio(
                 aspectRatio: 16 / 9,
-                child: poster == null
+                child: poster == null || poster!.isEmpty
                     ? Container(
-                  color: Colors.white10,
-                  child: loading
-                      ? const Center(
-                    child: SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 1.6,
-                        color: Color(0xffD4AF37),
-                      ),
-                    ),
-                  )
-                      : const SizedBox(),
-                )
-                    : Image.network(
-                  poster!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: Colors.grey.shade900,
-                      child: const Center(
-                        child: Icon(
-                          Icons.movie,
-                          color: Colors.white30,
-                          size: 28,
+                        color: Colors.grey.shade900,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Image.asset(
+                                "assets/images/logo.jpeg",
+                                height: 40,
+                                width: 40,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Icon(
+                                    Icons.movie,
+                                    color: Colors.white30,
+                                    size: 28,
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                "Bollywood Product",
+                                style: TextStyle(
+                                  color: Colors.white30,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+                      )
+                    : Image.network(
+                        poster!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey.shade900,
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Image.asset(
+                                    "assets/images/logo.jpeg",
+                                    height: 40,
+                                    width: 40,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Icon(
+                                        Icons.movie,
+                                        color: Colors.white30,
+                                        size: 28,
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "Bollywood Product",
+                                    style: TextStyle(
+                                      color: Colors.white30,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
-
               ),
             ),
 
@@ -117,9 +167,9 @@ class _MovieListTileState extends State<MovieListTile> {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 17,           // ⬆ bigger
+                fontSize: 17, // ⬆ bigger
                 fontWeight: FontWeight.w700,
-                height: 1.25,           // ⬆ better readability
+                height: 1.25, // ⬆ better readability
               ),
             ),
 
@@ -129,13 +179,12 @@ class _MovieListTileState extends State<MovieListTile> {
             Text(
               widget.language,
               style: const TextStyle(
-                color: Colors.white70,  // ⬆ better contrast
-                fontSize: 13.5,         // ⬆ bigger
+                color: Colors.white70, // ⬆ better contrast
+                fontSize: 13.5, // ⬆ bigger
                 fontWeight: FontWeight.w500,
                 height: 1.2,
               ),
             ),
-
           ],
         ),
       ),

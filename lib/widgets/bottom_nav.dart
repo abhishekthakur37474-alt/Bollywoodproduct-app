@@ -15,19 +15,16 @@ class _BottomNavState extends State<BottomNav> {
   int index = 0;
 
   final pages = const [
-    HomePage(),        // 🏠 Home (Latest + Upcoming + Full)
-    OttMoviesPage(),   // 📺 OTT (unchanged)
-    TrailersPage(),    // 🎬 Trailers (unchanged)
-    AccountPage(),     // 👤 Account
+    HomePage(), // 🏠 Home (Latest + Upcoming + Full)
+    OttMoviesPage(), // 📺 OTT (unchanged)
+    TrailersPage(), // 🎬 Trailers (unchanged)
+    AccountPage(), // 👤 Account
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: index,
-        children: pages,
-      ),
+      body: IndexedStack(index: index, children: pages),
       bottomNavigationBar: NavigationBar(
         height: 56,
         selectedIndex: index,
@@ -35,14 +32,8 @@ class _BottomNavState extends State<BottomNav> {
         indicatorColor: const Color(0xffD4AF37).withOpacity(0.18),
         onDestinationSelected: (i) => setState(() => index = i),
         destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            label: "Home",
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.tv_outlined),
-            label: "OTT",
-          ),
+          NavigationDestination(icon: Icon(Icons.home_outlined), label: "Home"),
+          NavigationDestination(icon: Icon(Icons.tv_outlined), label: "OTT"),
           NavigationDestination(
             icon: Icon(Icons.theaters_outlined),
             label: "Trailers",
