@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../utils/home_cache.dart';
 
 class DubbedService {
-  static Future<List> fetchDubbed() async {
+  static Future<List> fetchDubbedMovies() async {
     // ✅ USE CACHE IF ALREADY LOADED
     if (HomeCache.dubbed.isNotEmpty) {
       print(
@@ -12,40 +12,34 @@ class DubbedService {
       return HomeCache.dubbed;
     }
 
-    print("🟡 [DUBBED SERVICE] Fetching dubbed movies from API");
+    print("[DUBBED SERVICE] Fetching dubbed movies from API");
 
     try {
       final res = await http.get(
         Uri.parse("https://www.bollywoodproduct.com/api-dubbed-movies.php"),
-      );
-
-      print("🟡 [DUBBED SERVICE] Status=${res.statusCode}");
-      print("🟡 [DUBBED SERVICE] Body length=${res.body.length}");
+      ); // Removed timeout for splash screen
 
       if (res.statusCode != 200) {
-        print("🔴 [DUBBED SERVICE] Non-200 response");
+        print("[DUBBED SERVICE] Non-200 response: ${res.statusCode}");
         return [];
       }
 
       final body = res.body.trim();
-      print(
-        "🟡 [DUBBED SERVICE] Body starts with: ${body.substring(0, body.length > 50 ? 50 : body.length)}",
-      );
 
       // 🔥 CRITICAL SAFETY CHECK
       if (!body.startsWith("{") && !body.startsWith("[")) {
         print("🔴 [DUBBED SERVICE] Invalid JSON response");
-        print(body.substring(0, body.length > 200 ? 200 : body.length));
         return [];
       }
 
       final raw = jsonDecode(body);
-      print("🟡 [DUBBED SERVICE] Parsed JSON keys: ${raw.keys.toList()}");
-
       final list = raw["data"] ?? raw["movies"] ?? [];
       print("🟡 [DUBBED SERVICE] Found ${list.length} dubbed movies");
 
-      HomeCache.dubbed = list; // ✅ CACHE
+      // ✅ OPTIMIZED: Skip sorting for faster loading, sort later if needed
+      print("🟢 [DUBBED SERVICE] Loaded ${list.length} dubbed movies quickly");
+
+      HomeCache.dubbed = List.from(list); // ✅ CACHE
       print("🟢 [DUBBED SERVICE] Cached dubbed=${list.length}");
 
       return list;

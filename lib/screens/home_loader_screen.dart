@@ -12,7 +12,6 @@ class HomeLoaderScreen extends StatefulWidget {
 
 class _HomeLoaderScreenState extends State<HomeLoaderScreen>
     with SingleTickerProviderStateMixin {
-
   int msgIndex = 0;
 
   final messages = [
@@ -20,7 +19,7 @@ class _HomeLoaderScreenState extends State<HomeLoaderScreen>
     "Finding latest Bollywood updates...",
     "Curating movies just for you...",
     "Almost ready 🍿",
-    "Loading premium experience..."
+    "Loading premium experience...",
   ];
 
   late Timer _timer;
@@ -75,17 +74,13 @@ class _HomeLoaderScreenState extends State<HomeLoaderScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-
             /// 🔥 PREMIUM LOGO
             Container(
               width: size.width * 0.36,
               height: size.width * 0.36,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xffD4AF37),
-                  width: 2.5,
-                ),
+                border: Border.all(color: const Color(0xffD4AF37), width: 2.5),
                 boxShadow: [
                   BoxShadow(
                     color: const Color(0xffD4AF37).withOpacity(0.35),
@@ -124,10 +119,7 @@ class _HomeLoaderScreenState extends State<HomeLoaderScreen>
                 messages[msgIndex],
                 key: ValueKey(msgIndex),
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                ),
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
               ),
             ),
 
@@ -148,10 +140,7 @@ class _HomeLoaderScreenState extends State<HomeLoaderScreen>
             /// 💡 TRUST MESSAGE
             const Text(
               "Please wait, we are preparing your experience",
-              style: TextStyle(
-                color: Colors.white38,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: Colors.white38, fontSize: 12),
             ),
           ],
         ),

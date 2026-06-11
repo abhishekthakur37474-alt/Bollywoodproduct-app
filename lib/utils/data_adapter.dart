@@ -9,8 +9,10 @@ class DataAdapter {
   }
 
   static String? extractPoster(dynamic item) {
-    // First try direct poster fields
+    // First try direct poster fields (prioritize film_image_url for upcoming movies)
     final poster =
+        item["film_image_url"] ?? // ✅ UPCOMING MOVIES API
+        item["youtube_thumbnail"] ?? // ✅ DUBBED MOVIES
         item["film_image"] ??
         item["poster_image_url"] ??
         item["poster"] ??
@@ -101,7 +103,13 @@ class DataAdapter {
 
   /// ✅ NEW: LANGUAGE EXTRACTOR
   static String extractLanguage(dynamic item) {
-    // First try main_lang field (numeric code)
+    // First try ott_language_name field (for OTT movies)
+    final ottLang = item["ott_language_name"]?.toString();
+    if (ottLang != null && ottLang.trim().isNotEmpty) {
+      return ottLang.trim();
+    }
+
+    // Then try main_lang field (numeric code)
     final mainLang = _parseLanguages(item["main_lang"]?.toString());
     if (mainLang != null && mainLang.isNotEmpty) {
       return mainLang;
@@ -109,6 +117,7 @@ class DataAdapter {
 
     // Then try other language fields
     final langStr =
+        item["film_lang"] ?? // ✅ FULL MOVIES API
         item["language"] ??
         item["movie_language"] ??
         item["lang"] ??
@@ -119,10 +128,18 @@ class DataAdapter {
       return parsedLang;
     }
 
-    return "Hindi"; // ✅ sensible default
+    return ""; // No default language
   }
 
-  /// ✅ NEW: MAP LANGUAGE CODE TO LANGUAGE NAME
+  static String extractCategorySlug(dynamic item) {
+    return item["trailer_category"] ?? // ✅ FULL MOVIES API
+        item["categorySlug"] ??
+        item["category"] ??
+        item["type"] ??
+        ""; // ✅ No default category for latest movies
+  }
+
+  /// NEW: MAP LANGUAGE CODE TO LANGUAGE NAME
   static String _mapLanguageCode(String code) {
     final langMap = {
       "3": "English",
@@ -162,11 +179,33 @@ class DataAdapter {
     return yr.toString();
   }
 
+  /// ✅ NEW: PARSE FULL_DATE (DD-MM-YYYY) to DateTime for sorting
+  static DateTime? parseFullDate(dynamic item) {
+    final dateStr = item["full_date"]?.toString();
+    if (dateStr == null || dateStr.isEmpty) return null;
+
+    try {
+      // Format: DD-MM-YYYY
+      final parts = dateStr.split("-");
+      if (parts.length == 3) {
+        final day = int.parse(parts[0]);
+        final month = int.parse(parts[1]);
+        final year = int.parse(parts[2]);
+        return DateTime(year, month, day);
+      }
+    } catch (e) {
+      print("🔴 [DATE PARSE] Failed to parse date: $dateStr");
+    }
+    return null;
+  }
+
   static String? extractYoutubeId(dynamic item) {
     String? raw;
 
     if (item is Map) {
       raw =
+          item["film_watch_url"] ?? // ✅ FULL MOVIES API
+          item["youtube_watch_url"] ?? // ✅ DUBBED MOVIES
           item["youtube_id"] ??
           item["video_id"] ??
           item["youtube_url"] ??

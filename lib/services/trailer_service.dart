@@ -20,9 +20,9 @@ class TrailerService {
     }).toList();
   }
 
-  /// 🔥 LATEST TRAILERS (SAME API)
+  /// 🔥 LATEST TRAILERS
   static Future<List> fetchLatestTrailers() async {
-    print("🟡 [SERVICE] Fetching LATEST trailers (GROUPED)");
+    print("🟡 [SERVICE] Fetching LATEST trailers");
 
     final res = await http.get(
       Uri.parse("https://www.bollywoodproduct.com/api-latest-trailers.php"),
@@ -35,31 +35,6 @@ class TrailerService {
 
     if (rawList is! List) return [];
 
-    Map<String, Map> grouped = {};
-
-    for (var item in rawList) {
-      final title = (item["film_name"] ?? "").toString();
-      final language = (item["language"] ?? "Hindi").toString();
-      final trailerCategory = (item["trailer_category"] ?? "Trailer")
-          .toString();
-
-      if (!grouped.containsKey(title)) {
-        grouped[title] = {
-          "film_name": title,
-          "languages": <String>{language},
-          "trailer_category": trailerCategory,
-          "trailers": [item],
-        };
-      } else {
-        grouped[title]!["languages"].add(language);
-        grouped[title]!["trailers"].add(item);
-      }
-    }
-
-    // Convert Set to List for JSON serialization
-    return grouped.values.map((group) {
-      group["languages"] = (group["languages"] as Set<String>).toList();
-      return group;
-    }).toList();
+    return rawList;
   }
 }

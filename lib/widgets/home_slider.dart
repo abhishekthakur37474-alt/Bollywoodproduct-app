@@ -95,10 +95,8 @@ class _HomeSliderState extends State<HomeSlider> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => MovieDetailPage(
-                        data: m,
-                        exploreList: slides,
-                      ),
+                      builder: (_) =>
+                          MovieDetailPage(data: m, exploreList: slides),
                     ),
                   );
                 },

@@ -27,39 +27,14 @@ class _LatestTrailersPageState extends State<LatestTrailersPage>
       fetch: fetch,
       builder: (m) {
         final title = m["film_name"] ?? "Trailer";
-
-        final languages =
-            (m["languages"] as List?)
-                ?.map((e) => e.toString())
-                .toSet()
-                .toList() ??
-            ["Hindi"];
-
-        final languageText = languages.first; // Only first language
-
+        final language = (m["language"] ?? "Hindi").toString();
         final trailerCategory = m["trailer_category"] ?? "Trailer";
+        final releaseDate = m["release_date"]?.toString() ?? "";
 
-        String? poster;
-
-        /// 🔥 FIXED POSTER EXTRACTION
-
-        if (m["trailers"] is List) {
-          final trailers = m["trailers"] as List;
-          for (final t in trailers) {
-            final yt = DataAdapter.extractYoutubeId(t);
-            if (yt != null) {
-              poster = "https://img.youtube.com/vi/$yt/0.jpg";
-              break;
-            }
-          }
-        }
-
-        if (poster == null) {
-          final yt = DataAdapter.extractYoutubeId(m);
-          if (yt != null) {
-            poster = "https://img.youtube.com/vi/$yt/0.jpg";
-          }
-        }
+        final yt = DataAdapter.extractYoutubeId(m);
+        final String? poster = yt != null
+            ? "https://img.youtube.com/vi/$yt/0.jpg"
+            : null;
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 18),
@@ -73,7 +48,6 @@ class _LatestTrailersPageState extends State<LatestTrailersPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                /// ✅ TITLE FIRST
                 Text(
                   title,
                   style: const TextStyle(
@@ -82,10 +56,7 @@ class _LatestTrailersPageState extends State<LatestTrailersPage>
                     color: Colors.white,
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
-                /// ✅ POSTER SECOND (LIKE BEFORE)
                 if (poster != null)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
@@ -102,22 +73,25 @@ class _LatestTrailersPageState extends State<LatestTrailersPage>
                       borderRadius: BorderRadius.circular(12),
                     ),
                     alignment: Alignment.center,
-                    child: const Icon(
-                      Icons.play_circle_outline,
-                      color: Colors.white38,
-                      size: 48,
-                    ),
+                    child: const Icon(Icons.play_circle_outline,
+                        color: Colors.white38, size: 48),
                   ),
-
                 const SizedBox(height: 8),
-
-                /// ✅ LANGUAGE + CATEGORY LAST (LIKE BEFORE)
-                Text(
-                  "$languageText • $trailerCategory",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.6),
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      "$language • $trailerCategory",
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.white.withOpacity(0.6)),
+                    ),
+                    if (releaseDate.isNotEmpty) ...[
+                      Text(
+                        "  •  $releaseDate",
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.white.withOpacity(0.4)),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),

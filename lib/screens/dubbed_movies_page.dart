@@ -16,7 +16,7 @@ class DubbedMoviesPage extends StatefulWidget {
 
 class _DubbedMoviesPageState extends State<DubbedMoviesPage> {
   Future<List> fetch() async {
-    final list = await DubbedService.fetchDubbed();
+    final list = await DubbedService.fetchDubbedMovies();
     // Store in HomeCache for exploreList
     HomeCache.dubbed = list;
     return list;
@@ -65,7 +65,9 @@ class _DubbedMoviesPageState extends State<DubbedMoviesPage> {
             id: safeId,
             title: DataAdapter.extractTitle(m),
             language: DataAdapter.extractDubbedLanguage(m),
-            posterOverride: null, // Force API call for posters
+            posterOverride: DataAdapter.extractPoster(
+              m,
+            ), // ✅ Use youtube_thumbnail
             onTap: () {
               Navigator.push(
                 context,

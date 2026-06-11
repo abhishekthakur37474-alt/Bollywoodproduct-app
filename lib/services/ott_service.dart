@@ -8,21 +8,18 @@ class OttService {
   static Future<List> fetchOtt() async {
     // USE CACHE IF ALREADY LOADED
     if (HomeCache.ott.isNotEmpty) {
-      print("[OTT SERVICE] Using cached OTT movies");
+      HomeCache.ottNotifier.value =
+          HomeCache.ott; // 🔥 ENSURE NOTIFIER IS UP TO DATE
+      print("🟢 [OTT SERVICE] Using cached ${HomeCache.ott.length} OTT movies");
       return HomeCache.ott;
     }
 
-    print("[OTT SERVICE] Fetching OTT movies from API");
-
     try {
       final res = await http.get(
-        Uri.parse("https://hindi.bollywoodproduct.com/api-ott-movies.php"),
+        Uri.parse("https://www.bollywoodproduct.com/api-ott-movies.php"),
       );
 
-      print("[OTT SERVICE] Status=${res.statusCode}");
-
       if (res.statusCode != 200) {
-        print("[OTT SERVICE] Non-200 response");
         return [];
       }
 
@@ -30,46 +27,27 @@ class OttService {
 
       // CRITICAL SAFETY CHECK
       if (!body.startsWith("{") && !body.startsWith("[")) {
-        print("[OTT SERVICE] Invalid JSON response");
-        print(body.substring(0, body.length > 200 ? 200 : body.length));
         return [];
       }
 
       final raw = jsonDecode(body);
       final list = raw["films"] ?? [];
 
-      // Reverse list for descending order (latest first)
-      final reversedList = List.from(list.reversed);
+      // 🔥 FAST LOADING: Load first 15 immediately, rest in background
+      final fastList = await _loadOttWithPagination(list);
 
       // Check for new entries
       if (_lastKnownFilms.isNotEmpty) {
-        final newEntries = _findNewEntries(list, _lastKnownFilms);
-        if (newEntries.isNotEmpty) {
-          print("[OTT SERVICE] NEW MOVIES FOUND: ${newEntries.length}");
-          for (int i = 0; i < newEntries.length; i++) {
-            final movie = newEntries[i];
-            final title = movie["film_name"] ?? "Unknown";
-            final platform = movie["ott_platform"] ?? "Unknown";
-            print("[NEW MOVIE ${i + 1}] $title on $platform");
-          }
-        } else {
-          print("[OTT SERVICE] No new movies found");
-        }
+        _findNewEntries(fastList, _lastKnownFilms);
       } else {
-        print(
-          "[OTT SERVICE] First time loading, tracking ${list.length} movies",
-        );
+        _lastKnownFilms = List.from(list);
       }
 
-      // Update last known films
-      _lastKnownFilms = List.from(list);
-
-      HomeCache.ott = reversedList; // CACHE
-      print("[OTT SERVICE] Cached OTT=${reversedList.length}");
-
-      return reversedList;
+      HomeCache.ott = fastList; // CACHE
+      HomeCache.ottNotifier.value = fastList; // 🔥 NOTIFY UI
+      print("🟢 [OTT SERVICE] Cached ${fastList.length} OTT movies");
+      return fastList;
     } catch (e) {
-      print("[OTT SERVICE] Exception: $e");
       return [];
     }
   }
@@ -102,5 +80,72 @@ class OttService {
     }
 
     return newEntries;
+  }
+
+  // 🔥 FAST PAGINATION: Load first 10 immediately, rest in background
+  static Future<List> _loadOttWithPagination(List allMovies) async {
+    const pageSize = 10;
+
+    if (allMovies.isEmpty) return [];
+
+    // Step 1: Load first 10 movies with basic data (no YouTube API calls)
+    final firstBatch = allMovies.take(pageSize).toList();
+    final fastBatch = <Map<String, dynamic>>[];
+
+    for (final movie in firstBatch) {
+      final movieMap = Map<String, dynamic>.from(movie as Map);
+      movieMap['youtube_upload_date'] = null;
+      movieMap['youtube_upload_raw'] = null;
+      fastBatch.add(movieMap);
+    }
+
+    // Step 2: Load remaining movies in background with smaller batches
+    _loadRemainingMoviesInBackground(allMovies.skip(pageSize).toList());
+
+    return fastBatch;
+  }
+
+  // Background loading for remaining movies with optimized batching
+  static Future<void> _loadRemainingMoviesInBackground(
+    List remainingMovies,
+  ) async {
+    if (remainingMovies.isEmpty) return;
+
+    try {
+      final batchSize = 5; // Reduced batch size for faster processing
+      for (int i = 0; i < remainingMovies.length; i += batchSize) {
+        final batch = remainingMovies.skip(i).take(batchSize).toList();
+        final batchWithDates = <Map<String, dynamic>>[];
+
+        for (final movie in batch) {
+          final movieMap = Map<String, dynamic>.from(movie as Map);
+          final youtubeId = movie["film_youtube"]?.toString() ?? "";
+
+          // Skip YouTube API calls for faster loading
+          if (youtubeId.isNotEmpty) {
+            movieMap['youtube_upload_date'] = null;
+            movieMap['youtube_upload_raw'] = null;
+          }
+
+          batchWithDates.add(movieMap);
+        }
+
+        // Update cache with this batch
+        if (HomeCache.ott.isNotEmpty) {
+          HomeCache.ott.addAll(batchWithDates);
+          HomeCache.ottNotifier.value = List.from(
+            HomeCache.ott,
+          ); // 🔥 NOTIFY UI
+          print(
+            "🟢 [OTT SERVICE] Added ${batchWithDates.length} more movies, total: ${HomeCache.ott.length}",
+          );
+        }
+
+        // Reduced delay for faster loading
+        await Future.delayed(Duration(milliseconds: 50));
+      }
+    } catch (e) {
+      // Background loading failed, but app continues to work
+    }
   }
 }

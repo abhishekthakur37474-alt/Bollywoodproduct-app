@@ -15,7 +15,14 @@ class FullMoviesPage extends StatefulWidget {
 class _FullMoviesPageState extends State<FullMoviesPage> {
   final List _allFullMovies = [];
 
-  Future<List> fetch() => MovieService.fetchFull();
+  Future<List> fetch() async {
+    // ✅ Only fetch from api-full-movies.php
+    final fullMoviesData = await MovieService.fetchFull();
+    print(
+      "=== [FULL MOVIES] Fetched from api-full-movies.php: ${fullMoviesData.length} items",
+    );
+    return fullMoviesData;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,12 +41,13 @@ class _FullMoviesPageState extends State<FullMoviesPage> {
           }
 
           return MovieListTile(
-            id: m["unique_id"],
+            id: m["film_id"]?.toString() ?? m["unique_id"]?.toString() ?? "",
             title: DataAdapter.extractTitle(m),
             language: DataAdapter.extractLanguage(m),
+            categorySlug: DataAdapter.extractCategorySlug(m),
             posterOverride: DataAdapter.extractPoster(m),
             onTap: () {
-              print("🟢 [EXPLORE FULL] Total=${_allFullMovies.length}");
+              print("=== [EXPLORE FULL] Total=${_allFullMovies.length}");
 
               Navigator.push(
                 context,

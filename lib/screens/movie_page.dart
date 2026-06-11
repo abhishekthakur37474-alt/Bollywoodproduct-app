@@ -24,14 +24,11 @@ class _MoviePageState extends State<MoviePage> {
   }
 
   Future<void> fetchMovies() async {
-    final url = Uri.parse(
-      "https://hindi.bollywoodproduct.com/api-latest-movies.php",
-    );
+    final url = Uri.parse("https://bollywoodproduct.com/api-latest-movies.php");
 
     try {
       final res = await http.get(url);
-      if (res.statusCode == 200 &&
-          res.body.trim().startsWith('{')) {
+      if (res.statusCode == 200 && res.body.trim().startsWith('{')) {
         movies = jsonDecode(res.body)["movies"] ?? [];
       }
     } catch (_) {}
@@ -46,17 +43,15 @@ class _MoviePageState extends State<MoviePage> {
       body: SafeArea(
         child: loading
             ? const Center(
-          child: CircularProgressIndicator(
-            color: Color(0xffD4AF37),
-          ),
-        )
+                child: CircularProgressIndicator(color: Color(0xffD4AF37)),
+              )
             : movies.isEmpty
             ? const Center(
-          child: Text(
-            "Failed to load",
-            style: TextStyle(color: Colors.white),
-          ),
-        )
+                child: Text(
+                  "Failed to load",
+                  style: TextStyle(color: Colors.white),
+                ),
+              )
             : buildGrid(),
       ),
     );
@@ -99,39 +94,33 @@ class _MoviePageState extends State<MoviePage> {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
             sliver: SliverGrid(
-              gridDelegate:
-              const SliverGridDelegateWithFixedCrossAxisCount(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 10,
                 childAspectRatio: 0.70,
               ),
-              delegate: SliverChildBuilderDelegate(
-                    (context, i) {
-                  final m = movies[i];
+              delegate: SliverChildBuilderDelegate((context, i) {
+                final m = movies[i];
 
-                  return MovieTile(
-                    id: m["unique_id"],
-                    title: DataAdapter.extractTitle(m),
-                    year: DataAdapter.extractYear(m),
-                    posterOverride:
-                    DataAdapter.extractPoster(m), // ✅ SAME AS OTT
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => MovieDetailPage(
-                            data: m, // ✅ PASS FULL DATA
-                            exploreList:
-                            movies.take(20).toList(), // ✅ FAST
-                          ),
+                return MovieTile(
+                  id: m["unique_id"],
+                  title: DataAdapter.extractTitle(m),
+                  year: DataAdapter.extractYear(m),
+                  posterOverride: DataAdapter.extractPoster(m), // ✅ SAME AS OTT
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MovieDetailPage(
+                          data: m, // ✅ PASS FULL DATA
+                          exploreList: movies.take(20).toList(), // ✅ FAST
                         ),
-                      );
-                    },
-                  );
-                },
-                childCount: movies.length,
-              ),
+                      ),
+                    );
+                  },
+                );
+              }, childCount: movies.length),
             ),
           ),
         ],

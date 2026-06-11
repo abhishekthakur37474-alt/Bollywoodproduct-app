@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../widgets/movie_tile.dart';
 import '../utils/data_adapter.dart';
 
@@ -18,11 +19,13 @@ class OttDetailPage extends StatelessWidget {
     final year = data["year_release"]?.toString() ?? "";
     final releaseDate = data["release_date"]?.toString() ?? "";
     final platform = data["ott_platform"] ?? "";
+    final ottLink = data["ott_link"] ?? "";
     final image = data["film_image"];
 
     final cast = (data["lead_cast"] ?? []) as List;
     final directors = (data["directors"] ?? []) as List;
     final genres = (data["genres"] ?? []) as List;
+
     /// ✅ OTT RATINGS
     final ratings = data["ratings"] ?? {};
     final cbfcRating = ratings["cbfc_rating"]?.toString() ?? "";
@@ -31,13 +34,9 @@ class OttDetailPage extends StatelessWidget {
     final imdb = ratings["imdb_rating"]?.toString() ?? "";
     final rotten = ratings["rotten_tomato_rating"]?.toString() ?? "";
 
-
     return Scaffold(
       backgroundColor: const Color(0xff0F0F0F),
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: Colors.black,
-      ),
+      appBar: AppBar(title: Text(title), backgroundColor: Colors.black),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
         children: [
@@ -63,88 +62,129 @@ class OttDetailPage extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               "Release Date: $releaseDate",
-              style: const TextStyle(
-                color: Colors.white60,
-                fontSize: 14,
-              ),
+              style: const TextStyle(color: Colors.white60, fontSize: 14),
             ),
           ],
 
           const SizedBox(height: 18),
 
-          /// 🎥 OTT PLATFORM
-          if (platform.isNotEmpty)
+          /// OTT PLATFORM
+          if (platform.isNotEmpty && ottLink.isNotEmpty)
             Align(
               alignment: Alignment.centerLeft,
-              child: Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.amber.shade700,
-                      Colors.amber.shade500,
+              child: InkWell(
+                onTap: () async {
+                  final uri = Uri.parse(ottLink);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.amber.shade700, Colors.amber.shade500],
+                    ),
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.amber.withOpacity(0.25),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.amber.withOpacity(0.25),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    )
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.ondemand_video,
-                        color: Colors.black, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      platform,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.ondemand_video,
                         color: Colors.black,
+                        size: 20,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Text(
+                        "$platform",
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
 
           const SizedBox(height: 24),
-          /// ✅ OTT RATINGS SECTION
-          if (cbfcRating.isNotEmpty)
-            section("CBFC Rating", [cbfcRating]),
 
-          if (certificateNo.isNotEmpty)
-            section("Certificate No.", [certificateNo]),
+          /// RELEASE DATE
+          if (data["full_release_date"] != null &&
+              data["full_release_date"].toString().isNotEmpty)
+            section("Release Date", [data["full_release_date"].toString()]),
 
-          if (certificateDate.isNotEmpty)
-            section("Certificate Date", [certificateDate]),
-
-          if (imdb.isNotEmpty && imdb != "N.A")
-            section("IMDb Rating", [imdb]),
-
-          if (rotten.isNotEmpty && rotten != "N.A")
-            section("Rotten Tomato", [rotten]),
-
-
-          const SizedBox(height: 28),
-
-          if (cast.isNotEmpty)
-            section("Starring",
-                cast.map((e) => e["name"].toString()).toList()),
-
+          /// DIRECTORS
           if (directors.isNotEmpty)
-            section("Directors",
-                directors.map((e) => e["name"].toString()).toList()),
+            section(
+              "Directors",
+              directors.map((e) => e["name"].toString()).toList(),
+            ),
 
+          /// LEAD CAST
+          if (cast.isNotEmpty)
+            section(
+              "Lead Cast",
+              cast.map((e) => e["name"].toString()).toList(),
+            ),
+
+          /// GENRES
           if (genres.isNotEmpty)
-            section("Genres",
-                genres.map((e) => e["name"].toString()).toList()),
+            section("Genres", genres.map((e) => e["name"].toString()).toList()),
+
+          /// RATINGS
+          if (imdb.isNotEmpty && imdb != "N.A" ||
+              cbfcRating.isNotEmpty ||
+              certificateNo.isNotEmpty ||
+              certificateDate.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Ratings",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                if (imdb.isNotEmpty && imdb != "N.A")
+                  Text(
+                    "IMDb: $imdb",
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                if (cbfcRating.isNotEmpty)
+                  Text(
+                    "CBFC: $cbfcRating",
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                if (certificateNo.isNotEmpty)
+                  Text(
+                    "Certificate No: $certificateNo",
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                if (certificateDate.isNotEmpty)
+                  Text(
+                    "Certificate Date: $certificateDate",
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                const SizedBox(height: 18),
+              ],
+            ),
 
           const SizedBox(height: 18),
 
@@ -169,8 +209,7 @@ class OttDetailPage extends StatelessWidget {
                 final title = DataAdapter.extractTitle(m);
                 final year = DataAdapter.extractYear(m);
                 final poster = DataAdapter.extractPoster(m);
-                final id =
-                (m["film_id"] ?? m["unique_id"] ?? "").toString();
+                final id = (m["film_id"] ?? m["unique_id"] ?? "").toString();
 
                 return Container(
                   width: 130,
@@ -184,10 +223,8 @@ class OttDetailPage extends StatelessWidget {
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => OttDetailPage(
-                            data: m,
-                            exploreList: exploreList,
-                          ),
+                          builder: (_) =>
+                              OttDetailPage(data: m, exploreList: exploreList),
                         ),
                       );
                     },
@@ -203,8 +240,6 @@ class OttDetailPage extends StatelessWidget {
     );
   }
 
-
-
   Widget section(String title, List<String> items) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,8 +253,9 @@ class OttDetailPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        ...items.map((e) =>
-            Text(e, style: const TextStyle(color: Colors.white70))),
+        ...items.map(
+          (e) => Text(e, style: const TextStyle(color: Colors.white70)),
+        ),
         const SizedBox(height: 18),
       ],
     );

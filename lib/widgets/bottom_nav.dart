@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../screens/home_page.dart';
 import '../screens/ott_movies_page.dart';
 import '../screens/trailers_page.dart';
-import '../screens/account_page.dart';
+ import '../screens/celebrity_page.dart';
+import '../screens/songs.dart';
+// import '../screens/account_page.dart'; // Temporarily hidden
 
 class BottomNav extends StatefulWidget {
   const BottomNav({super.key});
@@ -18,7 +20,9 @@ class _BottomNavState extends State<BottomNav> {
     HomePage(), // 🏠 Home (Latest + Upcoming + Full)
     OttMoviesPage(), // 📺 OTT (unchanged)
     TrailersPage(), // 🎬 Trailers (unchanged)
-    AccountPage(), // 👤 Account
+     CelebrityPage(), // 👤 Celebrity (temporarily hidden)
+    LatestSongsScreen(),  // 🎵 Songs
+    // AccountPage(), // 👤 Account (temporarily hidden)
   ];
 
   @override
@@ -40,8 +44,16 @@ class _BottomNavState extends State<BottomNav> {
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),
-            label: "Account",
+            label: "Celebrity",
+           ),
+          NavigationDestination(
+            icon: Icon(Icons.music_note),
+            label: "Songs",
           ),
+          // NavigationDestination(
+          //   icon: Icon(Icons.person_outline),
+          //   label: "Account",
+          // ),
         ],
       ),
     );

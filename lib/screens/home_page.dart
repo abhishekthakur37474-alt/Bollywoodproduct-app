@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../widgets/app_drawer.dart';
 import '../widgets/movie_tile.dart';
 import '../utils/data_adapter.dart';
 import '../utils/home_cache.dart';
-import '../widgets/notification_sheet.dart';
+// import '../widgets/notification_sheet.dart';
 import 'ott_movies_page.dart';
 import 'movie_detail_page.dart';
 import 'all_movies_page.dart';
@@ -14,7 +14,6 @@ import 'full_movies_page.dart';
 import 'ott_detail_page.dart';
 import 'search_screen.dart';
 import 'dubbed_movies_page.dart';
-import '../utils/home_service.dart'; // ✅ ADDED
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -24,12 +23,11 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // ✅ BACKGROUND API LOADING
+  // ✅ DATA ALREADY LOADED IN SPLASH
   @override
   void initState() {
     super.initState();
-    print("🟢 [HOME PAGE] Loading home data...");
-    HomeService.loadAllHomeData(); // Load all data including dubbed movies
+    print("🟢 [HOME PAGE] Using cached data from splash");
   }
 
   void _showDisclaimerModal(BuildContext context) {
@@ -173,24 +171,24 @@ class _HomePageState extends State<HomePage> {
               );
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () {
-              if (FirebaseAuth.instance.currentUser == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Please login first")),
-                );
-                return;
-              }
+          // IconButton(
+          //   icon: const Icon(Icons.notifications_none),
+          //   onPressed: () {
+          //     if (FirebaseAuth.instance.currentUser == null) {
+          //       ScaffoldMessenger.of(context).showSnackBar(
+          //         const SnackBar(content: Text("Please login first")),
+          //       );
+          //       return;
+          //     }
 
-              showModalBottomSheet(
-                context: context,
-                backgroundColor: Colors.transparent,
-                isScrollControlled: true,
-                builder: (_) => NotificationSheet(),
-              );
-            },
-          ),
+          //     showModalBottomSheet(
+          //       context: context,
+          //       backgroundColor: Colors.transparent,
+          //       isScrollControlled: true,
+          //       builder: (_) => NotificationSheet(),
+          //     );
+          //   },
+          // ),
           const SizedBox(width: 8),
         ],
       ),
@@ -213,15 +211,21 @@ class _HomePageState extends State<HomePage> {
                 MaterialPageRoute(builder: (_) => const FullMoviesPage()),
               ),
             ),
-            section(
-              context,
-              key: "dubbed",
-              title: "Latest Dubbed Movies",
-              list: HomeCache.dubbed,
-              onSeeAll: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const DubbedMoviesPage()),
-              ),
+            // REPLACE dubbed section with:
+            ValueListenableBuilder<List>(
+              valueListenable: HomeCache.dubbedNotifier,
+              builder: (context, dubbedList, child) {
+                return section(
+                  context,
+                  key: "dubbed",
+                  title: "Latest Dubbed Movies",
+                  list: dubbedList.isNotEmpty ? dubbedList : HomeCache.dubbed,
+                  onSeeAll: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DubbedMoviesPage()),
+                  ),
+                );
+              },
             ),
             section(
               context,
@@ -236,22 +240,29 @@ class _HomePageState extends State<HomePage> {
             section(
               context,
               key: "latest",
-              title: "Latest Movies",
+              title: "Latest Movies in Theater",
               list: HomeCache.latest,
               onSeeAll: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const AllMoviesPage()),
               ),
             ),
-            section(
-              context,
-              key: "ott",
-              title: "Latest OTT Movies",
-              list: HomeCache.ott,
-              onSeeAll: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const OttMoviesPage()),
-              ),
+
+            /// 🔥 OTT SECTION with ValueListenableBuilder for auto-refresh
+            ValueListenableBuilder<List>(
+              valueListenable: HomeCache.ottNotifier,
+              builder: (context, ottList, child) {
+                return section(
+                  context,
+                  key: "ott",
+                  title: "Latest OTT Movies",
+                  list: ottList.isNotEmpty ? ottList : HomeCache.ott,
+                  onSeeAll: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const OttMoviesPage()),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -395,8 +406,8 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-          // Show loading indicator or empty state
-          if (items.isEmpty)
+          // Show loading indicator or empty state (skip loading for OTT)
+          if (items.isEmpty && !HomeCache.loaded && key != "ott")
             Padding(
               padding: const EdgeInsets.only(right: 12, bottom: 12),
               child: Row(
@@ -413,9 +424,11 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             )
+          else if (items.isEmpty)
+            const SizedBox.shrink()
           else
             SizedBox(
-              height: 118,
+              height: 140,
               child: ListView.builder(
                 key: PageStorageKey(key),
                 scrollDirection: Axis.horizontal,
@@ -429,7 +442,9 @@ class _HomePageState extends State<HomePage> {
                       ? resolveOttId(m)
                       : isDubbed
                       ? _extractDubbedId(m)
-                      : (m["unique_id"]?.toString() ?? "");
+                      : (m["film_id"]?.toString() ??
+                            m["unique_id"]?.toString() ??
+                            "");
 
                   if (safeId.isEmpty) return const SizedBox.shrink();
 
@@ -440,10 +455,11 @@ class _HomePageState extends State<HomePage> {
                       title: DataAdapter.extractTitle(m),
                       year: isDubbed
                           ? DataAdapter.extractDubbedLanguage(m)
-                          : DataAdapter.extractLanguage(m),
-                      posterOverride: isDubbed
-                          ? null
-                          : DataAdapter.extractPoster(m),
+                          : (isOtt
+                                ? DataAdapter.extractLanguage(m)
+                                : (key == "upcoming" || key == "latest")
+                                ? DataAdapter.extractLanguage(m)
+                                : "${DataAdapter.extractCategorySlug(m)} in ${DataAdapter.extractLanguage(m)}"),
                       onTap: () {
                         if (isOtt) {
                           Navigator.push(
@@ -465,6 +481,7 @@ class _HomePageState extends State<HomePage> {
                           );
                         }
                       },
+                      posterOverride: DataAdapter.extractPoster(m),
                     ),
                   );
                 },

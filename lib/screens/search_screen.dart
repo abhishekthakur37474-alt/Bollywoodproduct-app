@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../widgets/app_drawer.dart';
@@ -26,11 +25,17 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isSearched = false;
   bool _showSuggestions = false;
   final Map<String, String?> _posterCache = {};
+  final Map<String, Future<String?>> _posterFutures = {};
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  /// ✅ Search source: only api-films.php
+  List<dynamic> _allMovies() {
+    return [...HomeCache.films];
   }
 
   void _onSearchChanged(String query) {
@@ -46,26 +51,14 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _getSuggestions(String query) {
-    final allMovies = [
-      ...HomeCache.latest,
-      ...HomeCache.upcoming,
-      ...HomeCache.full,
-      ...HomeCache.ott,
-      ...HomeCache.dubbed,
-    ];
-
-    final suggestions = allMovies
-        .where((movie) {
-          final title = DataAdapter.extractTitle(movie).toLowerCase().trim();
-          final language = DataAdapter.extractLanguage(
-            movie,
-          ).toLowerCase().trim();
-          final searchQuery = query.toLowerCase().trim();
-
-          return title.contains(searchQuery) || language.contains(searchQuery);
-        })
-        .take(5)
-        .toList(); // Limit to 5 suggestions
+    final seen = <String>{};
+    final searchQuery = query.toLowerCase().trim();
+    final suggestions = _allMovies().where((movie) {
+      final title = DataAdapter.extractTitle(movie).toLowerCase().trim();
+      final language = DataAdapter.extractLanguage(movie).toLowerCase().trim();
+      if (!title.contains(searchQuery) && !language.contains(searchQuery)) return false;
+      return seen.add(_dedupeKey(movie));
+    }).take(5).toList();
 
     setState(() {
       _suggestions = suggestions;
@@ -73,23 +66,50 @@ class _SearchScreenState extends State<SearchScreen> {
     });
   }
 
+  /// ✅ Normalized dedup key — prevents same movie appearing twice from different caches
+  String _dedupeKey(dynamic m) {
+    final id = m["unique_id"]?.toString() ??
+                m["film_id"]?.toString() ??
+                m["id"]?.toString();
+    if (id != null && id.isNotEmpty) return 'id:$id';
+    final title = DataAdapter.extractTitle(m).toLowerCase().trim();
+    final year = DataAdapter.extractYear(m).trim();
+    return 'ty:$title||$year';
+  }
+
+  /// ✅ Find poster from other caches by unique_id — no API call needed
+  String? _findPosterFromOtherCaches(String uniqueId) {
+    final allCaches = [
+      ...HomeCache.films,
+    ];
+    for (final m in allCaches) {
+      final id = m["unique_id"]?.toString() ?? m["film_id"]?.toString();
+      if (id == uniqueId) {
+        final poster = DataAdapter.extractPoster(m);
+        if (poster != null) return poster;
+      }
+    }
+    return null;
+  }
+
   Future<String?> _getMoviePoster(dynamic movie) async {
-    final uniqueId = movie["unique_id"]?.toString();
+    final directPoster = DataAdapter.extractPoster(movie);
+    if (directPoster != null) return directPoster;
+
+    final uniqueId = movie["unique_id"]?.toString() ?? movie["film_id"]?.toString() ?? movie["id"]?.toString();
     if (uniqueId == null) return null;
 
-    // Check cache first
     if (_posterCache.containsKey(uniqueId)) {
       return _posterCache[uniqueId];
     }
 
-    // Try direct poster extraction first
-    final directPoster = DataAdapter.extractPoster(movie);
-    if (directPoster != null) {
-      _posterCache[uniqueId] = directPoster;
-      return directPoster;
+    // ✅ Try other caches first — instant, no API call
+    final cachedPoster = _findPosterFromOtherCaches(uniqueId);
+    if (cachedPoster != null) {
+      _posterCache[uniqueId] = cachedPoster;
+      return cachedPoster;
     }
 
-    // Try API call for poster
     try {
       final res = await http.get(
         Uri.parse(
@@ -101,15 +121,12 @@ class _SearchScreenState extends State<SearchScreen> {
         final raw = jsonDecode(res.body);
         String? posterUrl;
 
-        // Try YouTube image from trailers
         if (raw["trailers"] is List && raw["trailers"].isNotEmpty) {
           posterUrl = raw["trailers"][0]["youtube_image_url"];
         }
 
-        // Try direct poster fields
         if (posterUrl == null || posterUrl.isEmpty) {
-          posterUrl =
-              raw["film_image"] ?? raw["poster_image_url"] ?? raw["poster"];
+          posterUrl = raw["film_image"] ?? raw["poster_image_url"] ?? raw["poster"];
         }
 
         _posterCache[uniqueId] = posterUrl;
@@ -133,30 +150,51 @@ class _SearchScreenState extends State<SearchScreen> {
     });
 
     try {
-      // Search in all cached data
-      final allMovies = [
-        ...HomeCache.latest,
-        ...HomeCache.upcoming,
-        ...HomeCache.full,
-        ...HomeCache.ott,
-        ...HomeCache.dubbed,
-      ];
+      final q = query.toLowerCase().trim();
+      final seen = <String>{};
 
-      final results = allMovies.where((movie) {
-        final title = DataAdapter.extractTitle(movie).toLowerCase().trim();
-        final language = DataAdapter.extractLanguage(
-          movie,
-        ).toLowerCase().trim();
-        final searchQuery = query.toLowerCase().trim();
-
-        return title.contains(searchQuery) || language.contains(searchQuery);
+      // ✅ STEP 1: Search local cache (instant — includes HomeCache.films)
+      var results = _allMovies().where((m) {
+        final t = DataAdapter.extractTitle(m).toLowerCase().trim();
+        final l = DataAdapter.extractLanguage(m).toLowerCase().trim();
+        final y = DataAdapter.extractYear(m);
+        if (!seen.add(_dedupeKey(m))) {
+          print("🔴 [SEARCH DEDUP] SKIPPED: title=$t | lang=$l | year=$y");
+          return false;
+        }
+        final match = t.contains(q) || l.contains(q);
+        if (match) print("🟢 [SEARCH RESULT] title=$t | lang=$l | year=$y");
+        return match;
       }).toList();
 
+      print("🔵 [SEARCH TOTAL] ${results.length} results for '$q'");
+
+      // ✅ STEP 2: API fallback if local empty (films not loaded yet)
+      if (results.isEmpty && HomeCache.films.isEmpty) {
+        print("🟡 [SEARCH] Local empty, fetching api-films.php");
+        final res = await http.get(
+          Uri.parse("https://www.bollywoodproduct.com/api-films.php"),
+        );
+        if (res.statusCode == 200 && res.body.trim().startsWith("{")) {
+          final all = (jsonDecode(res.body)["movies"] ?? []) as List;
+          HomeCache.films = all; // ✅ Cache for future searches
+          print("🟢 [SEARCH] api-films.php loaded: ${all.length} items");
+
+          results = all.where((m) {
+            final t = DataAdapter.extractTitle(m).toLowerCase().trim();
+            final l = DataAdapter.extractLanguage(m).toLowerCase().trim();
+            return t.contains(q) || l.contains(q);
+          }).toList();
+        }
+      }
+
+      if (!mounted) return;
       setState(() {
         _searchResults = results;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -221,8 +259,6 @@ class _SearchScreenState extends State<SearchScreen> {
               right: 0,
               child: Container(
                 color: const Color(0xff0F0F0F),
-                // constraints: const BoxConstraints(maxHeight: 300),
-                // margin: const EdgeInsets.only(top: 8),
                 child: ClipRRect(
                   borderRadius: const BorderRadius.only(
                     bottomLeft: Radius.circular(12),
@@ -260,6 +296,8 @@ class _SearchScreenState extends State<SearchScreen> {
                             final index = entry.key;
                             final movie = entry.value;
                             final title = DataAdapter.extractTitle(movie);
+                            final language = DataAdapter.extractLanguage(movie);
+                            final posterUrl = DataAdapter.extractPoster(movie);
                             final isLast = index == _suggestions.length - 1;
 
                             return Column(
@@ -270,31 +308,90 @@ class _SearchScreenState extends State<SearchScreen> {
                                       _showSuggestions = false;
                                       _searchController.text = title;
                                     });
-                                    _searchMovies(title);
+                                    final isOtt = HomeCache.ott.contains(movie) ||
+                                        HomeCache.ottLatest.contains(movie) ||
+                                        HomeCache.ottUpcoming.contains(movie);
+                                    if (isOtt) {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => OttDetailPage(
+                                            data: movie,
+                                            exploreList: HomeCache.ott,
+                                          ),
+                                        ),
+                                      );
+                                    } else {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => MovieDetailPage(
+                                            data: movie,
+                                            exploreList: _suggestions,
+                                          ),
+                                        ),
+                                      );
+                                    }
                                   },
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
+                                      vertical: 10,
                                       horizontal: 16,
                                     ),
                                     child: Row(
                                       children: [
-                                        Icon(
-                                          Icons.movie,
-                                          color: Colors.white.withOpacity(0.6),
-                                          size: 20,
+                                        // 🖼️ THUMBNAIL
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(6),
+                                          child: SizedBox(
+                                            width: 72,
+                                            height: 42,
+                                            child: posterUrl != null
+                                                ? Image.network(
+                                                    posterUrl,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (_, __, ___) =>
+                                                        _suggestionPlaceholder(),
+                                                  )
+                                                : _suggestionPlaceholder(),
+                                          ),
                                         ),
                                         const SizedBox(width: 12),
+                                        // 📝 TITLE + LANGUAGE
                                         Expanded(
-                                          child: Text(
-                                            title,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                title,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              () {
+                                                final year = DataAdapter.extractYear(movie);
+                                                final sub = [
+                                                  if (language.isNotEmpty) language,
+                                                  if (year.isNotEmpty) year,
+                                                ].join(' • ');
+                                                if (sub.isEmpty) return const SizedBox.shrink();
+                                                return Padding(
+                                                  padding: const EdgeInsets.only(top: 3),
+                                                  child: Text(
+                                                    sub,
+                                                    style: TextStyle(
+                                                      color: Colors.white.withOpacity(0.5),
+                                                      fontSize: 11,
+                                                    ),
+                                                  ),
+                                                );
+                                              }(),
+                                            ],
                                           ),
                                         ),
                                         Icon(
@@ -324,6 +421,13 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _suggestionPlaceholder() {
+    return Container(
+      color: const Color(0xff1a1a1a),
+      child: Icon(Icons.movie, color: Colors.white.withOpacity(0.3), size: 20),
     );
   }
 
@@ -374,15 +478,17 @@ class _SearchScreenState extends State<SearchScreen> {
       itemCount: _searchResults.length,
       itemBuilder: (context, index) {
         final movie = _searchResults[index];
-        final isOtt = HomeCache.ott.contains(movie);
+        final isOtt = HomeCache.ott.contains(movie) ||
+            HomeCache.ottLatest.contains(movie) ||
+            HomeCache.ottUpcoming.contains(movie);
         final isDubbed = HomeCache.dubbed.contains(movie);
 
-        final safeId = isOtt
-            ? movie["film_id"]?.toString() ??
-                  movie["unique_id"]?.toString() ??
-                  movie["id"]?.toString() ??
-                  ""
-            : movie["unique_id"]?.toString() ?? "";
+        final safeId =
+            movie["film_id"]?.toString() ??
+            movie["unique_id"]?.toString() ??
+            movie["ott_id"]?.toString() ??
+            movie["id"]?.toString() ??
+            "";
 
         if (safeId.isEmpty) return const SizedBox.shrink();
 
@@ -413,7 +519,7 @@ class _SearchScreenState extends State<SearchScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                /// TITLE FIRST
+                /// TITLE
                 Text(
                   DataAdapter.extractTitle(movie),
                   style: const TextStyle(
@@ -425,13 +531,13 @@ class _SearchScreenState extends State<SearchScreen> {
 
                 const SizedBox(height: 10),
 
-                /// POSTER SECOND (16:9 ASPECT RATIO LIKE TRAILERS)
+                /// POSTER (16:9)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: AspectRatio(
                     aspectRatio: 16 / 9,
                     child: FutureBuilder<String?>(
-                      future: _getMoviePoster(movie),
+                      future: _posterFutures.putIfAbsent(safeId, () => _getMoviePoster(movie)),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState ==
                             ConnectionState.waiting) {
@@ -504,13 +610,13 @@ class _SearchScreenState extends State<SearchScreen> {
 
                 const SizedBox(height: 8),
 
-                /// LANGUAGE + CATEGORY LAST
+                /// LANGUAGE + YEAR + CATEGORY
                 Text(
-                  "${DataAdapter.extractLanguage(movie)} • ${isOtt
-                      ? 'OTT'
-                      : isDubbed
-                      ? 'Dubbed'
-                      : 'Movie'}",
+                  [
+                    DataAdapter.extractLanguage(movie),
+                    DataAdapter.extractYear(movie),
+                    isOtt ? 'OTT' : isDubbed ? 'Dubbed' : 'Movie',
+                  ].where((s) => s.isNotEmpty).join(' • '),
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.white.withOpacity(0.6),

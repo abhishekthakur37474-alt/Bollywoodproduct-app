@@ -6,6 +6,7 @@ class MovieListTile extends StatefulWidget {
   final String id;
   final String title;
   final String language;
+  final String? categorySlug;
   final String? posterOverride;
   final VoidCallback onTap;
 
@@ -15,6 +16,7 @@ class MovieListTile extends StatefulWidget {
     required this.title,
     required this.language,
     required this.onTap,
+    this.categorySlug,
     this.posterOverride,
   });
 
@@ -169,18 +171,20 @@ class _MovieListTileState extends State<MovieListTile> {
                 color: Colors.white,
                 fontSize: 17, // ⬆ bigger
                 fontWeight: FontWeight.w700,
-                height: 1.25, // ⬆ better readability
+                height: 1.25, // better readability
               ),
             ),
 
             const SizedBox(height: 2),
 
-            /// 🌐 LANGUAGE (CLEAR & DISTINCT)
+            /// LANGUAGE & CATEGORY
             Text(
-              widget.language,
+              widget.categorySlug != null
+                  ? "${widget.language} ${widget.categorySlug}"
+                  : widget.language,
               style: const TextStyle(
-                color: Colors.white70, // ⬆ better contrast
-                fontSize: 13.5, // ⬆ bigger
+                color: Colors.white70,
+                fontSize: 13.5,
                 fontWeight: FontWeight.w500,
                 height: 1.2,
               ),

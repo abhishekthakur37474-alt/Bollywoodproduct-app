@@ -125,10 +125,10 @@
 //   }
 // }
 
-
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../widgets/bottom_nav.dart';
-import 'home_loader_screen.dart';
+import '../utils/home_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -137,31 +137,58 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  int msgIndex = 0;
+
+  final messages = [
+    "Showing you the best choice...",
+    "Finding latest Bollywood updates...",
+    "Curating movies just for you...",
+    "Almost ready 🍿",
+    "Loading premium experience...",
+  ];
+
+  late Timer _timer;
 
   @override
   void initState() {
     super.initState();
+    _startMessages();
     _init();
   }
 
-  Future<void> _init() async {
-    print("🟡 [SPLASH] Showing splash");
-
-    /// 🔥 5 second splash (fast, no API here)
-    await Future.delayed(const Duration(seconds: 5));
-
-    print("🟢 [SPLASH] Redirecting to loader");
-
-    _go(const HomeLoaderScreen());
+  void _startMessages() {
+    _timer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (!mounted) return;
+      setState(() {
+        msgIndex = (msgIndex + 1) % messages.length;
+      });
+    });
   }
 
-  void _go(Widget page) {
+  Future<void> _init() async {
+    print("🟡 [SPLASH] Showing splash and loading data");
+
+    /// 🔥 Load all data during splash
+    await HomeService.loadAllHomeData();
+
+    print("🟢 [SPLASH] Data loaded → Opening Home");
+
+    _timer.cancel();
+
     if (!mounted) return;
+
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => page),
+      MaterialPageRoute(builder: (_) => const BottomNav()),
     );
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
   }
 
   @override
@@ -174,24 +201,22 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            /// 🔥 PREMIUM LOGO
             Container(
-              width: size.width * 0.42,
-              height: size.width * 0.42,
+              width: size.width * 0.36,
+              height: size.width * 0.36,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xffD4AF37),
-                  width: 2.4,
-                ),
+                border: Border.all(color: const Color(0xffD4AF37), width: 2.5),
                 boxShadow: [
                   BoxShadow(
                     color: const Color(0xffD4AF37).withOpacity(0.35),
                     blurRadius: 60,
-                    spreadRadius: 2,
+                    spreadRadius: 3,
                   ),
                 ],
               ),
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               child: ClipOval(
                 child: Image.asset(
                   "assets/images/logo.jpeg",
@@ -200,38 +225,49 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             ),
 
-            const SizedBox(height: 26),
+            const SizedBox(height: 28),
 
+            /// 🎬 APP NAME
             const Text(
               "Bollywood Product",
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
                 color: Color(0xffD4AF37),
-                letterSpacing: 0.4,
               ),
             ),
 
-            const SizedBox(height: 6),
+            const SizedBox(height: 10),
 
-            const Text(
-              " · Your Film Information hub · ",
-              style: TextStyle(
-                color: Colors.white60,
-                fontSize: 14,
-                letterSpacing: 0.3,
+            /// ✨ ROTATING MESSAGE
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 500),
+              child: Text(
+                messages[msgIndex],
+                key: ValueKey(msgIndex),
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
               ),
             ),
 
             const SizedBox(height: 34),
 
+            /// ⏳ PREMIUM LOADER
             const SizedBox(
-              width: 22,
-              height: 22,
+              width: 24,
+              height: 24,
               child: CircularProgressIndicator(
-                strokeWidth: 2.2,
+                strokeWidth: 2.3,
                 color: Color(0xffD4AF37),
               ),
+            ),
+
+            const SizedBox(height: 22),
+
+            /// 💡 TRUST MESSAGE
+            const Text(
+              "Please wait, we are preparing your experience",
+              style: TextStyle(color: Colors.white38, fontSize: 12),
             ),
           ],
         ),

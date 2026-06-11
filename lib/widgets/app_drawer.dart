@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:bollywood/screens/terms_view.dart';
 import 'package:bollywood/screens/privacy_view.dart';
-import 'package:bollywood/screens/account_page.dart';
+// import 'package:bollywood/screens/account_page.dart'; // Temporarily hidden
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -33,26 +33,28 @@ class AppDrawer extends StatelessWidget {
 
             const Divider(color: Colors.white24),
 
-            /// ACCOUNT
-            ListTile(
-              leading: const Icon(Icons.person, color: Colors.white),
-              title: const Text("Account",
-                  style: TextStyle(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AccountPage()),
-                );
+            /// ACCOUNT (temporarily hidden)
+            // ListTile(
+            //   leading: const Icon(Icons.person, color: Colors.white),
+            //   title: const Text("Account",
+            //       style: TextStyle(color: Colors.white)),
+            //   onTap: () {
+            //     Navigator.pop(context);
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(builder: (_) => const AccountPage()),
+            //     );
 
-              },
-            ),
+            //   },
+            // ),
 
             /// TERMS
             ListTile(
               leading: const Icon(Icons.description, color: Colors.white),
-              title: const Text("Terms of App",
-                  style: TextStyle(color: Colors.white)),
+              title: const Text(
+                "Terms of App",
+                style: TextStyle(color: Colors.white),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
@@ -65,8 +67,10 @@ class AppDrawer extends StatelessWidget {
             /// PRIVACY
             ListTile(
               leading: const Icon(Icons.privacy_tip, color: Colors.white),
-              title: const Text("Privacy Policy",
-                  style: TextStyle(color: Colors.white)),
+              title: const Text(
+                "Privacy Policy",
+                style: TextStyle(color: Colors.white),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(

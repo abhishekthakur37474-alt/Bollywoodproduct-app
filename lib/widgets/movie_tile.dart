@@ -63,7 +63,7 @@ class _MovieTileState extends State<MovieTile> {
     return GestureDetector(
       onTap: widget.onTap,
       child: SizedBox(
-        width: 135, // 🔥 NETFLIX WIDTH
+        width: 182, // 🔥 NETFLIX WIDTH
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min, // 🔥 NO EXTRA HEIGHT
@@ -72,7 +72,7 @@ class _MovieTileState extends State<MovieTile> {
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
               child: SizedBox(
-                height: 76, // 🔥 16:9 ratio (135 * 9 / 16 = 76)
+                height: 102, // 🔥 16:9 ratio (135 * 9 / 16 = 76)
                 width: double.infinity,
                 child: poster == null || poster!.isEmpty
                     ? Container(
