@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bollywood Product - API Documentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-dark: #09090b;
+      --bg-card: #18181b;
+      --border-color: #27272a;
+      --text-main: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --primary: #d4af37;
+      --primary-hover: #b8962c;
+      --primary-glow: rgba(212, 175, 55, 0.15);
+      --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      line-height: 1.6;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(212, 175, 55, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(212, 175, 55, 0.03) 0%, transparent 40%);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 50px;
+      position: relative;
+    }
+
+    header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 3rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+
+    header h1 span {
+      color: var(--primary);
+      text-shadow: 0 0 20px var(--primary-glow);
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto 30px;
+      font-weight: 300;
+    }
+
+    /* Search & Stats Bar */
+    .controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 40px;
+      background: rgba(24, 24, 27, 0.6);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 15px 25px;
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      min-width: 280px;
+    }
+
+    .search-box input {
+      width: 100%;
+      background: rgba(9, 9, 11, 0.8);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px 16px 12px 40px;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.95rem;
+      transition: all 0.3s ease;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 10px var(--primary-glow);
+    }
+
+    .search-box svg {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      width: 18px;
+      height: 18px;
+      pointer-events: none;
+    }
+
+    .stats {
+      display: flex;
+      gap: 20px;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .stat-badge {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .stat-badge span {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    /* Grid Layout */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 30px;
+    }
+
+    @media (min-width: 768px) {
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* Card styling */
+    .section-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 30px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+
+    .section-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(212, 175, 55, 0.3);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), 0 0 20px var(--primary-glow);
+    }
+
+    .section-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--primary);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .card-header svg {
+      width: 24px;
+      height: 24px;
+      color: var(--primary);
+    }
+
+    .card-header h2 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .endpoints-list {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .endpoint-item {
+      background: rgba(9, 9, 11, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      border-radius: 12px;
+      padding: 16px;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .endpoint-item:hover {
+      background: rgba(9, 9, 11, 0.7);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .endpoint-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .endpoint-title {
+      font-weight: 500;
+      font-size: 0.95rem;
+      color: var(--text-main);
+    }
+
+    .method-badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      letter-spacing: 0.05em;
+    }
+
+    .url-wrapper {
+      display: flex;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 8px 12px;
+      gap: 10px;
+    }
+
+    .url-text {
+      flex: 1;
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: #dfa857;
+      overflow-x: auto;
+      white-space: nowrap;
+      scrollbar-width: none; /* Firefox */
+    }
+
+    .url-text::-webkit-scrollbar {
+      display: none; /* Safari and Chrome */
+    }
+
+    .copy-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .copy-btn:hover {
+      color: var(--primary);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .copy-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .copy-btn.copied {
+      color: var(--success);
+      background: var(--success-glow);
+    }
+
+    .copy-tooltip {
+      position: absolute;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%) translateY(5px);
+      background: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .copy-btn.copied .copy-tooltip {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .description {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+      font-weight: 300;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 60px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 300;
+      border-top: 1px solid var(--border-color);
+      padding-top: 30px;
+    }
+
+    /* Back To Code Float */
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .brand-logo svg {
+      width: 32px;
+      height: 32px;
+      fill: var(--primary);
+      filter: drop-shadow(0 0 8px var(--primary-glow));
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="brand-logo">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/>
+        </svg>
+      </div>
+      <h1>Bollywood Product <span>API Directory</span></h1>
+      <p>A categorized, searchable reference list of all backend API endpoints integrated inside the application codebase.</p>
+    </header>
+
+    <div class="controls-bar">
+      <div class="search-box">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        <input type="text" id="search-input" placeholder="Search endpoints, categories, descriptions..." onkeyup="filterEndpoints()">
+      </div>
+      <div class="stats">
+        <div class="stat-badge">Total Categories: <span id="cat-count">6</span></div>
+        <div class="stat-badge">Total APIs: <span id="api-count">18</span></div>
+      </div>
+    </div>
+
+    <div class="grid" id="sections-grid">
+      <!-- Section 1 -->
+      <div class="section-card" data-category="movies films">
+        <div class="card-header">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"></path>
+          </svg>
+          <h2>Movies & Films</h2>
+        </div>
+        <div class="endpoints-list">
+          <div class="endpoint-item">
+            <div class="endpoint-info">
+              <span class="endpoint-title">Film Details</span>
+              <span class="method-badge">GET</span>
+            </div>
+            <div class="url-wrapper">
+              <span class="url-text">https://hindi.bollywoodproduct.com/api-film-details.php?unique_id={id}</span>
+              <button class="copy-btn" onclick="copyUrl(this)">
+                <span class="copy-tooltip">Copied!</span>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-7 0h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="description">Fetches complete metadata, release detail, genre, director, producers and cast for a single film.</div>
+          </div>
+
+          <div class="endpoint-item">
+            <div class="endpoint-info">
+              <span class="endpoint-title">Latest Movies</span>
+              <span class="method-badge">GET</span>
+            </div>
+            <div class="url-wrapper">
+              <span class="url-text">https://bollywoodproduct.com/api-latest-movies.php</span>
+              <button class="copy-btn" onclick="copyUrl(this)">
+                <span class="copy-tooltip">Copied!</span>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-7 0h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="description">Returns a list of recently released movies in the database.</div>
+          </div>
+
+          <div class="endpoint-item">
+            <div class="endpoint-info">
+              <span class="endpoint-title">Upcoming Movies</span>
+              <span class="method-badge">GET</span>
+            </div>
+            <div class="url-wrapper">
+              <span class="url-text">https://www.bollywoodproduct.com/api-upcoming-movies.php</span>
+              <button class="copy-btn" onclick="copyUrl(this)">
+                <span class="copy-tooltip">Copied!</span>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-7 0h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="description">Returns upcoming theater releases list.</div>
+          </div>
+
+          <div class="endpoint-item">
+            <div class="endpoint-info">
+              <span class="endpoint-title">Full Movies</span>
+              <span class="method-badge">GET</span>
+            </div>
+            <div class="url-wrapper">
+              <span class="url-text">https://www.bollywoodproduct.com/api-full-movies.php</span>
+              <button class="copy-btn" onclick="copyUrl(this)">
+                <span class="copy-tooltip">Copied!</span>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-7 0h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="description">Lists all movies fully available to watch on platforms or YouTube.</div>
+          </div>
+
+          <div class="endpoint-item">
+            <div class="endpoint-info">
+              <span class="endpoint-title">All Movies (Glance)</span>
+              <span class="method-badge">GET</span>
+            </div>
+            <div class="url-wrapper">
+              <span class="url-text">https://www.bollywoodproduct.com/api-all-movies.php</span>
+              <button class="copy-btn" onclick="copyUrl(this)">
+                <span class="copy-tooltip">Copied!</span>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-7 0h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="description">Fetches a combined directory list of various items.</div>
+          </div>
+
+          <div class="endpoint-item">
+            <div class="endpoint-info">
+              <span class="endpoint-title">Master Films List (Cache)</span>
+              <span class="method-badge">GET</span>
+            </div>
+            <div class="url-wrapper">
+              <span class="url-text">https://www.bollywoodproduct.com/api-films.php</span>
+              <button class="copy-btn" onclick="copyUrl(this)">
+                <span class="copy-tooltip">Copied!</span>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-7 0h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="description">Large JSON list of ~9000+ movies used locally in the app for local searching and offline caching.</div>
+          </div>
+
+          <div class="endpoint-item">
+            <div class="endpoint-info">
+              <span class="endpoint-title">Dubbed Movies</span>
+              <span class="method-badge">GET</span>
+            </div>
+            <div class="url-wrapper">
+              <span class="url-text">https://www.bollywoodproduct.com/api-dubbed-movies.php</span>
+              <button class="copy-btn" onclick="copyUrl(this)">
+                <span class="copy-tooltip">Copied!</span>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-7 0h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="description">Retrieves movies dubbed in alternative regional languages.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2 -->
+      <div class="section-card" data-category="trailers videos">
+        <div class="card-header">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <h2>Trailers & Videos</h2>
+        </div>
+        <div class="endpoints-list">
+          <div class="endpoint-item">
+            <div class="endpoint-info">
+              <span class="endpoint-title">Trailers Directory</span>
+              <span class="method-badge">GET</span>
+            </div>
+            <div class="url-wrapper">
+              <span class="url-text">https://hindi.bollywoodproduct.com/api-trailers.php</span>
+              <button class="copy-btn" onclick="copyUrl(this)">
+                <span class="copy-tooltip">Copied!</span>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-7 0h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="description">Fetches list of movie trailer updates.</div>
+          </div>
+
+          <div class="endpoint-item">
+            <div class="endpoint-info">
+              <span class="endpoint-title">Latest Trailers</span>
+              <span class="method-badge">GET</span>
+            </div>
+            <div class="url-wrapper">
+              <span class="url-text">https://www.bollywoodproduct.com/api-latest-trailers.php</span>
+              <button class="copy-btn" onclick="copyUrl(this)">
+                <span class="copy-tooltip">Copied!</span>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-7 0h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="description">Returns the most recently uploaded trailers.</div>
+          </div>
+
+          <div class="endpoint-item">
+            <div class="endpoint-info">
+              <span class="endpoint-title">Most Viewed Trailers</span>
+              <span class="method-badge">GET</span>
+            </div>
+            <div class="url-wrapper">
+              <span class="url-text">https://www.bollywoodproduct.com/api-most-viewed-trailers.php</span>
+              <button class="copy-btn" onclick="copyUrl(this)">
+                <span class="copy-tooltip">Copied!</span>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-7 0h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="description">Gets the trending/most viewed trailer videos.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3 -->
+      <div class="section-card" data-category="ott streaming">
+        <div class="card-header">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"></path>
+          </svg>
+          <h2>OTT Releases</h2>
+        </div>
+        <div class="endpoints-list">
+          <div class="endpoint-item">
+            <div class="endpoint-info">
+              <span class="endpoint-title">OTT Movies Directory</span>
+              <span class="method-badge">GET</span>
+            </div>
+            <div class="url-wrapper">
+              <span class="url-text">https://www.bollywoodproduct.com/api-ott-movies.php</span>
+              <button class="copy-btn" onclick="copyUrl(this)">
+                <span class="copy-tooltip">Copied!</span>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-7 0h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="description">Lists available digital/streaming releases on platforms like Netflix, Prime, Hotstar etc.</div>
+          </div>
+
+          <div class="endpoint-item">
+            <div class="endpoint-info">
+              <span class="endpoint-title">Latest OTT Releases</span>
+              <span class="method-badge">GET</span>
+            </div>
+            <div class="url-wrapper">
+              <span class="url-text">https://www.bollywoodproduct.com/api-ott-latest-movies.php</span>
+              <button class="copy-btn" onclick="copyUrl(this)">
+                <span class="copy-tooltip">Copied!</span>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-7 0h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="description">Recent OTT digital releases updates.</div>
+          </div>
+
+          <div class="endpoint-item">
+            <div class="endpoint-info">
+              <span class="endpoint-title">Upcoming OTT Releases</span>
+              <span class="method-badge">GET</span>
+            </div>
+            <div class="url-wrapper">
+              <span class="url-text">https://www.bollywoodproduct.com/api-ott-upcoming-movies.php</span>
+              <button class="copy-btn" onclick="copyUrl(this)">
+                <span class="copy-tooltip">Copied!</span>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-7 0h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="description">Announced upcoming digital releases list.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 4 -->
+      <div class="section-card" data-category="songs music audios">
+        <div class="card-header">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+          </svg>
+          <h2>Latest Songs</h2>
+        </div>
+        <div class="endpoints-list">
+          <div class="endpoint-item">
+            <div class="endpoint-info">
+              <span class="endpoint-title">Latest Songs List</span>
+              <span class="method-badge">GET</span>
+            </div>
+            <div class="url-wrapper">
+              <span class="url-text">https://www.bollywoodproduct.com/api/songs/latest.php</span>
+              <button class="copy-btn" onclick="copyUrl(this)">
+                <span class="copy-tooltip">Copied!</span>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-7 0h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="description">Fetches the list of newly added Bollywood film audio songs and videos.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 5 -->
+      <div class="section-card" data-category="celebrity actors birthday cast">
+        <div class="card-header">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18zm-3-9V9a2 2 0 00-2-2H8a2 2 0 00-2 2v3h12z"></path>
+          </svg>
+          <h2>Cast & Celebrities</h2>
+        </div>
+        <div class="endpoints-list">
+          <div class="endpoint-item">
+            <div class="endpoint-info">
+              <span class="endpoint-title">Today's Birthdays</span>
+              <span class="method-badge">GET</span>
+            </div>
+            <div class="url-wrapper">
+              <span class="url-text">https://bollywoodproduct.com/api-today-cast-birthday.php</span>
+              <button class="copy-btn" onclick="copyUrl(this)">
+                <span class="copy-tooltip">Copied!</span>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-7 0h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="description">Lists cast members and stars celebrating their birthdays today.</div>
+          </div>
+
+          <div class="endpoint-item">
+            <div class="endpoint-info">
+              <span class="endpoint-title">Tomorrow's Birthdays</span>
+              <span class="method-badge">GET</span>
+            </div>
+            <div class="url-wrapper">
+              <span class="url-text">https://www.bollywoodproduct.com/api-tommorow-cast-birthday.php</span>
+              <button class="copy-btn" onclick="copyUrl(this)">
+                <span class="copy-tooltip">Copied!</span>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-7 0h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="description">Lists cast members and stars celebrating their birthdays tomorrow.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 6 -->
+      <div class="section-card" data-category="external utility youtube images embed">
+        <div class="card-header">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+          </svg>
+          <h2>Utility & External APIs</h2>
+        </div>
+        <div class="endpoints-list">
+          <div class="endpoint-item">
+            <div class="endpoint-info">
+              <span class="endpoint-title">YouTube Metadata (NoEmbed)</span>
+              <span class="method-badge">GET</span>
+            </div>
+            <div class="url-wrapper">
+              <span class="url-text">https://noembed.com/embed?url=https://www.youtube.com/watch?v={videoId}</span>
+              <button class="copy-btn" onclick="copyUrl(this)">
+                <span class="copy-tooltip">Copied!</span>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-7 0h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="description">Used to parse video information (such as titles, dimensions) without requiring direct Google/YouTube key credentials.</div>
+          </div>
+
+          <div class="endpoint-item">
+            <div class="endpoint-info">
+              <span class="endpoint-title">YouTube Image Thumbnail</span>
+              <span class="method-badge">GET</span>
+            </div>
+            <div class="url-wrapper">
+              <span class="url-text">https://img.youtube.com/vi/{videoId}/0.jpg</span>
+              <button class="copy-btn" onclick="copyUrl(this)">
+                <span class="copy-tooltip">Copied!</span>
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m-7 0h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="description">Static video thumbnail path used to load image posters dynamically inside the app UI.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>&copy; 2026 Bollywood Product App. Created with &hearts; for developers.</p>
+    </footer>
+  </div>
+
+  <script>
+    // Copy URL function
+    function copyUrl(button) {
+      const urlText = button.previousElementSibling.textContent;
+      navigator.clipboard.writeText(urlText).then(() => {
+        button.classList.add('copied');
+        
+        // Reset state after 1.5s
+        setTimeout(() => {
+          button.classList.remove('copied');
+        }, 1500);
+      }).catch(err => {
+        console.error('Failed to copy: ', err);
+      });
+    }
+
+    // Filter Endpoints function
+    function filterEndpoints() {
+      const query = document.getElementById('search-input').value.toLowerCase().trim();
+      const cards = document.querySelectorAll('.section-card');
+      let visibleApis = 0;
+      let visibleCats = 0;
+
+      cards.forEach(card => {
+        let hasVisibleEndpointInCard = false;
+        const cardTitle = card.querySelector('h2').textContent.toLowerCase();
+        const cardCategory = card.getAttribute('data-category');
+        const endpoints = card.querySelectorAll('.endpoint-item');
+
+        endpoints.forEach(endpoint => {
+          const title = endpoint.querySelector('.endpoint-title').textContent.toLowerCase();
+          const url = endpoint.querySelector('.url-text').textContent.toLowerCase();
+          const desc = endpoint.querySelector('.description').textContent.toLowerCase();
+
+          const matchesQuery = 
+            title.includes(query) || 
+            url.includes(query) || 
+            desc.includes(query) ||
+            cardTitle.includes(query) ||
+            cardCategory.includes(query);
+
+          if (matchesQuery) {
+            endpoint.style.display = 'block';
+            hasVisibleEndpointInCard = true;
+            visibleApis++;
+          } else {
+            endpoint.style.display = 'none';
+          }
+        });
+
+        if (hasVisibleEndpointInCard) {
+          card.style.display = 'block';
+          visibleCats++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+
+      // Update stats dynamic count
+      document.getElementById('cat-count').textContent = visibleCats;
+      document.getElementById('api-count').textContent = visibleApis;
+    }
+  </script>
+</body>
+</html>
