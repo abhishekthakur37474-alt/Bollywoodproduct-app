@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Movie API Responses</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: monospace;
+      background: #0f0f0f;
+      color: #eee;
+      padding: 24px;
+    }
+
+    h1 {
+      font-family: sans-serif;
+      font-size: 24px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 32px;
+    }
+
+    .section {
+      margin-bottom: 40px;
+    }
+
+    .section-title {
+      font-family: sans-serif;
+      font-size: 18px;
+      font-weight: 500;
+      color: #fff;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #2a2a2a;
+    }
+
+    pre {
+      background: #141414;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #ccc;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>🎬 Movie API Responses</h1>
+
+  <div class="section">
+    <div class="section-title">1. Full Movies</div>
+    <pre>{
+  "status": "success",
+  "total_film_count": 1458,
+  "data": [
+    {
+      "film_id": "9424",
+      "film_name": "The Goldsmith",
+      "film_lang": "Italian",
+      "film_watch_url": "https://www.bollywoodproduct.com/media-the-goldsmith-italian-943283/watch-full-movie/italian",
+      "film_image_url": "https://img.youtube.com/vi/_L8DfdFb5zI/0.jpg",
+      "trailer_category": "Full Movie",
+      "upload_date": "12-06-2026",
+      "genre_list": "Horror, Survival Thriller",
+      "lead_cast": "",
+      "directors": "",
+      "producers": "",
+      "youtube_watch_url": "https://www.youtube.com/watch?v=_L8DfdFb5zI",
+      "date_release": "14",
+      "month_release": "10",
+      "year_release": "2022",
+      "release_date_formatted": "14 Oct 2022"
+    }
+  ]
+}</pre>
+  </div>
+
+  <div class="section">
+    <div class="section-title">2. Latest Movies</div>
+    <pre>{
+  "status": "success",
+  "count": 100,
+  "movies": [
+    {
+      "id": "9233",
+      "unique_id": "931362",
+      "unique_alias": "media--english-film",
+      "name": "Honeyjoon",
+      "date_release": "12",
+      "month_release": "06",
+      "year_release": "2026",
+      "main_lang": "3",
+      "lead_cast": [
+        { "id": "65892", "name": "Ayden Mayeri", "alias": "", "url": "/film-celebrity//cast-" },
+        { "id": "65893", "name": "Amira Casar", "alias": "", "url": "/film-celebrity//cast-" },
+        { "id": "65894", "name": "Jose Condessa", "alias": "", "url": "/film-celebrity//cast-" },
+        { "id": "65895", "name": "Antonio Maria", "alias": "", "url": "/film-celebrity//cast-" },
+        { "id": "65896", "name": "Tiago Sarmento", "alias": "", "url": "/film-celebrity//cast-" },
+        { "id": "65897", "name": "Teresa Faria", "alias": "", "url": "/film-celebrity//cast-" },
+        { "id": "65898", "name": "Rodrigo Beleza", "alias": "", "url": "/film-celebrity//cast-" },
+        { "id": "65899", "name": "Tomas Furtado de Melo", "alias": "", "url": "/film-celebrity//cast-" }
+      ],
+      "lead_cast_line": "Ayden Mayeri, Amira Casar, Jose Condessa, Antonio Maria, Tiago Sarmento, Teresa Faria, Rodrigo Beleza and Tomas Furtado de Melo",
+      "genres": {
+        "genre_list": [
+          { "id": 9, "name": "Comedy", "alias": "comedy", "genre_url": "/genre/comedy" },
+          { "id": 10, "name": "Drama", "alias": "drama", "genre_url": "/genre/drama" }
+        ],
+        "genre_line": "Comedy and Drama"
+      },
+      "cbfc_rating": "",
+      "film_image_url": "https://img.youtube.com/vi/suzLOVI117Y/0.jpg",
+      "youtube_watch_url": "https://www.youtube.com/watch?v=suzLOVI117Y",
+      "trailer_category": "Trailer",
+      "trailer_lanaguage": "English",
+      "running_time_minutes": "",
+      "running_time_seconds": ""
+    }
+  ]
+}</pre>
+  </div>
+
+  <div class="section">
+    <div class="section-title">3. Upcoming Movies</div>
+    <pre>{
+  "status": "success",
+  "count": 218,
+  "movies": [
+    {
+      "id": "9368",
+      "unique_id": "486408",
+      "unique_alias": "media-never-change-english-film",
+      "name": "Never Change",
+      "date_release": "17",
+      "month_release": "06",
+      "year_release": "2026",
+      "release_date_formatted": "17 Jun 2026",
+      "main_lang": "3",
+      "lead_cast": [
+        { "id": "63039", "name": "John Reynolds", "alias": "", "url": "/film-celebrity//cast-1043684856" },
+        { "id": "32502", "name": "Sofia Black D Elia", "alias": "", "url": "/film-celebrity//cast-878531536" },
+        { "id": "38407", "name": "Carmen Christopher", "alias": "", "url": "/film-celebrity//cast-848783943" },
+        { "id": "66304", "name": "Jo Firestone", "alias": "", "url": "/film-celebrity//cast-1198483209" }
+      ],
+      "lead_cast_line": "John Reynolds, Sofia Black D Elia, Carmen Christopher and Jo Firestone",
+      "genres": {
+        "genre_list": [
+          { "id": 9, "name": "Comedy", "alias": "comedy", "genre_url": "/genre/comedy" }
+        ],
+        "genre_line": "Comedy"
+      },
+      "cbfc_rating": "",
+      "film_image_url": "https://img.youtube.com/vi/JYXK-69nlUU/0.jpg",
+      "youtube_watch_url": "https://www.youtube.com/watch?v=JYXK-69nlUU",
+      "trailer_category": "",
+      "trailer_lanaguage": ""
+    }
+  ]
+}</pre>
+  </div>
+
+  <div class="section">
+    <div class="section-title">4. Dubbed Movies</div>
+    <pre>{
+  "status": "success",
+  "data": [
+    {
+      "dubbed_film_name": "The Goldsmith",
+      "dubbed_film_language": "Telugu",
+      "dubbing_lanaguage_url": "https://www.bollywoodproduct.com/media-the-goldsmith-telugu-dubbed-film-864",
+      "original_film_name": "The Goldsmith",
+      "original_film_language": "Italian",
+      "youtube_thumbnail": "https://img.youtube.com/vi/eeR3pxNDz1Q/0.jpg",
+      "youtube_watch_url": "https://www.youtube.com/watch?v=eeR3pxNDz1Q",
+      "full_date": "12-06-2026",
+      "directors": [],
+      "lead_cast": [],
+      "genres": [
+        { "id": 6, "name": "Horror", "alias": "horror" },
+        { "id": 38, "name": "Survival Thriller", "alias": "survival-thriller" }
+      ]
+    }
+  ]
+}</pre>
+  </div>
+
+  <div class="section">
+    <div class="section-title">5. OTT Movies</div>
+    <pre>{
+  "status": "success",
+  "count": 696,
+  "films": [
+    {
+      "ott_id": "860",
+      "film_id": "9012",
+      "film_name": "Dridam",
+      "ott_platform": "JioHotstar",
+      "platform_icon": null,
+      "platform_photo": null,
+      "ott_link": "",
+      "ott_language_id": "21",
+      "ott_language_name": "Malayalam",
+      "ott_language_alias": "malayalam",
+      "ott_remarks": "",
+      "date_release": "12",
+      "month_release": "06",
+      "year_release": "2026",
+      "full_release_date": "12 Jun 2026",
+      "film_url": "https://bollywoodproduct.com/title/media--malayalam-film-937724",
+      "film_youtube": "7YZKVpBlO1o",
+      "film_image": "https://img.youtube.com/vi/7YZKVpBlO1o/hqdefault.jpg",
+      "platform_url": "https://bollywoodproduct.com/ott/jiohotstar",
+      "directors": [],
+      "lead_cast": [
+        { "id": "17621", "name": "Shane Nigam", "alias": "", "url": "https://bollywoodproduct.com/film-celebrity//cast-" },
+        { "id": "10064", "name": "Kottayam Ramesh", "alias": "", "url": "https://bollywoodproduct.com/film-celebrity//cast-1870693193" },
+        { "id": "10519", "name": "Dinesh Prabhakar", "alias": "", "url": "https://bollywoodproduct.com/film-celebrity//cast-239623449" },
+        { "id": "15424", "name": "Shobi Thilakan", "alias": "", "url": "https://bollywoodproduct.com/film-celebrity//cast-1072469923" }
+      ],
+      "genres": [
+        { "id": 4, "name": "Crime", "alias": "crime" },
+        { "id": 84, "name": "Investigative Thriller", "alias": "investigative-thriller" },
+        { "id": 113, "name": "Cop", "alias": "" }
+      ],
+      "ratings": {
+        "rotten_tomato_rating": null,
+        "imdb_rating": null,
+        "rating": null,
+        "cbfc_rating": null,
+        "certificate_no": null,
+        "certificate_date": null,
+        "running_time_minutes": null,
+        "running_time_seconds": null
+      }
+    }
+  ]
+}</pre>
+  </div>
+
+  <div class="section">
+    <div class="section-title">6. Latest OTT</div>
+    <pre>{
+  "status": "success",
+  "count": 771,
+  "films": [
+    {
+      "ott_id": "860",
+      "film_id": "9012",
+      "film_name": "Dridam",
+      "ott_platform": "JioHotstar",
+      "platform_icon": null,
+      "platform_photo": null,
+      "ott_link": "",
+      "ott_language_id": "21",
+      "ott_language_name": "Malayalam",
+      "ott_language_alias": "malayalam",
+      "ott_remarks": "",
+      "date_release": "12",
+      "month_release": "06",
+      "year_release": "2026",
+      "full_release_date": "12 Jun 2026",
+      "film_url": "https://bollywoodproduct.com/title/media--malayalam-film-937724",
+      "film_youtube": "7YZKVpBlO1o",
+      "film_image": "https://img.youtube.com/vi/7YZKVpBlO1o/hqdefault.jpg",
+      "platform_url": "https://bollywoodproduct.com/ott/jiohotstar",
+      "directors": [],
+      "lead_cast": [
+        { "id": "17621", "name": "Shane Nigam", "alias": "", "url": "https://bollywoodproduct.com/film-celebrity//cast-" },
+        { "id": "10064", "name": "Kottayam Ramesh", "alias": "", "url": "https://bollywoodproduct.com/film-celebrity//cast-1870693193" },
+        { "id": "10519", "name": "Dinesh Prabhakar", "alias": "", "url": "https://bollywoodproduct.com/film-celebrity//cast-239623449" },
+        { "id": "15424", "name": "Shobi Thilakan", "alias": "", "url": "https://bollywoodproduct.com/film-celebrity//cast-1072469923" }
+      ],
+      "genres": [
+        { "id": 4, "name": "Crime", "alias": "crime" },
+        { "id": 84, "name": "Investigative Thriller", "alias": "investigative-thriller" },
+        { "id": 113, "name": "Cop", "alias": "" }
+      ],
+      "ratings": {
+        "rotten_tomato_rating": null,
+        "imdb_rating": null,
+        "rating": null,
+        "cbfc_rating": null,
+        "certificate_no": null,
+        "certificate_date": null,
+        "running_time_minutes": null,
+        "running_time_seconds": null
+      }
+    }
+  ]
+}</pre>
+  </div>
+
+  <div class="section">
+    <div class="section-title">7. Upcoming OTT</div>
+    <pre>{
+  "status": "success",
+  "count": 13,
+  "films": [
+    {
+      "ott_id": "826",
+      "film_id": "9192",
+      "film_name": "I Will Find You",
+      "ott_platform": "Netflix",
+      "platform_icon": null,
+      "platform_photo": null,
+      "ott_link": "https://www.netflix.com/title/81509368",
+      "ott_language_id": "3",
+      "ott_language_name": "English",
+      "ott_language_alias": "english",
+      "ott_remarks": "",
+      "date_release": "18",
+      "month_release": "06",
+      "year_release": "2026",
+      "full_release_date": "18 Jun 2026",
+      "film_url": "https://bollywoodproduct.com/title/media--english-web-series-646444",
+      "film_youtube": "mObRUsA7dPY",
+      "film_image": "https://img.youtube.com/vi/mObRUsA7dPY/hqdefault.jpg",
+      "platform_url": "https://bollywoodproduct.com/ott/netflix",
+      "directors": [
+        { "id": 5934, "profile_unique_id": "1843922316", "name": "Brad Anderson", "alias": "brad-anderson", "url": "https://bollywoodproduct.com/film-celebrity/brad-anderson/director-1843922316" },
+        { "id": 13399, "profile_unique_id": "1303304547", "name": "Adam Davidson", "alias": "adam-davidson", "url": "https://bollywoodproduct.com/film-celebrity/adam-davidson/director-1303304547" },
+        { "id": 14613, "profile_unique_id": "2127889644", "name": "Maggie Kiley", "alias": "maggie-kiley", "url": "https://bollywoodproduct.com/film-celebrity/maggie-kiley/director-2127889644" },
+        { "id": 14614, "profile_unique_id": "763304163", "name": "Maja Vrvilo", "alias": "maja-vrvilo", "url": "https://bollywoodproduct.com/film-celebrity/maja-vrvilo/director-763304163" }
+      ],
+      "lead_cast": [],
+      "genres": [
+        { "id": 4, "name": "Crime", "alias": "crime" },
+        { "id": 21, "name": "Mystery Thriller", "alias": "mystery-thriller" }
+      ],
+      "ratings": {
+        "rotten_tomato_rating": null,
+        "imdb_rating": null,
+        "rating": null,
+        "cbfc_rating": null,
+        "certificate_no": null,
+        "certificate_date": null,
+        "running_time_minutes": null,
+        "running_time_seconds": null
+      }
+    }
+  ]
+}</pre>
+  </div>
+
+</body>
+
+</html>
