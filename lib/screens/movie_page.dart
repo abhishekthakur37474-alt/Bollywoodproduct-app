@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-import 'movie_detail_page.dart';
+import 'common_detail_screen.dart';
 import '../widgets/movie_tile.dart';
 import '../utils/data_adapter.dart';
 
@@ -112,9 +112,10 @@ class _MoviePageState extends State<MoviePage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => MovieDetailPage(
+                        builder: (_) => CommonDetailScreen(
                           data: m, // ✅ PASS FULL DATA
                           exploreList: movies.take(20).toList(), // ✅ FAST
+                          isLatest: true,
                         ),
                       ),
                     );

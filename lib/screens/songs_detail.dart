@@ -2,8 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
-import '../screens/movie_detail_page.dart';
 import '../utils/home_cache.dart';
+import '../utils/data_adapter.dart';
+import 'common_detail_screen.dart';
 
 class SongDetailScreen extends StatefulWidget {
   final Map<String, dynamic> song;
@@ -51,7 +52,10 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
     if (movieData != null) {
       if (context.mounted) {
         Navigator.push(context, MaterialPageRoute(
-          builder: (_) => MovieDetailPage(data: movieData, exploreList: HomeCache.latest.isNotEmpty ? HomeCache.latest : HomeCache.movies),
+          builder: (_) => CommonDetailScreen(
+            data: movieData,
+            exploreList: HomeCache.latest.isNotEmpty ? HomeCache.latest : HomeCache.movies,
+          ),
         ));
       }
       return;
@@ -87,7 +91,11 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
           if (found != null && context.mounted) {
             Navigator.pop(context);
             Navigator.push(context, MaterialPageRoute(
-              builder: (_) => MovieDetailPage(data: found!, exploreList: HomeCache.latest.isNotEmpty ? HomeCache.latest : HomeCache.movies),            ));
+              builder: (_) => CommonDetailScreen(
+                data: found!,
+                exploreList: HomeCache.latest.isNotEmpty ? HomeCache.latest : HomeCache.movies,
+              ),
+            ));
             return;
           }
         }
@@ -125,7 +133,10 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
 
       if (found != null && context.mounted) {
         Navigator.push(context, MaterialPageRoute(
-          builder: (_) => MovieDetailPage(data: found!, exploreList: HomeCache.latest.isNotEmpty ? HomeCache.latest : HomeCache.movies),
+          builder: (_) => CommonDetailScreen(
+            data: found!,
+            exploreList: HomeCache.latest.isNotEmpty ? HomeCache.latest : HomeCache.movies,
+          ),
         ));
       } else if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

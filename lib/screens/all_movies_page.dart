@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../utils/paginated_list.dart';
 import '../utils/data_adapter.dart';
 import '../widgets/movie_list_tile.dart';
-import 'movie_detail_page.dart';
+import 'common_detail_screen.dart';
 
 class AllMoviesPage extends StatefulWidget {
   const AllMoviesPage({super.key});
@@ -47,9 +47,10 @@ class _AllMoviesPageState extends State<AllMoviesPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => MovieDetailPage(
+                  builder: (_) => CommonDetailScreen(
                     data: m,
                     exploreList: _allMovies, // ✅ FIXED (NO MORE 1 MOVIE)
+                    isLatest: true,
                   ),
                 ),
               );

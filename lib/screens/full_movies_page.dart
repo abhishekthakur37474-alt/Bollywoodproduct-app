@@ -3,7 +3,7 @@ import '../services/movie_service.dart';
 import '../utils/paginated_list.dart';
 import '../utils/data_adapter.dart';
 import '../widgets/movie_list_tile.dart';
-import 'movie_detail_page.dart';
+import 'common_detail_screen.dart';
 
 class FullMoviesPage extends StatefulWidget {
   const FullMoviesPage({super.key});
@@ -47,16 +47,18 @@ class _FullMoviesPageState extends State<FullMoviesPage> {
             categorySlug: DataAdapter.extractCategorySlug(m),
             posterOverride: DataAdapter.extractPoster(m),
             onTap: () {
-              print("=== [EXPLORE FULL] Total=${_allFullMovies.length}");
+  print("=== [EXPLORE FULL] Total=${_allFullMovies.length}");
 
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      MovieDetailPage(data: m, exploreList: _allFullMovies),
-                ),
-              );
-            },
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => CommonDetailScreen(
+        data: m,
+        exploreList: _allFullMovies,
+      ),
+    ),
+  );
+},
           );
         },
       ),

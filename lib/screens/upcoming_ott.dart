@@ -2,8 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../utils/paginated_list.dart';
+import '../utils/data_adapter.dart';
 import '../widgets/movie_list_tile.dart';
-import 'ott_detail_page.dart';
+import 'common_detail_screen.dart';
 
 class UpcomingOttPage extends StatefulWidget {
   const UpcomingOttPage({super.key});
@@ -61,8 +62,13 @@ class _UpcomingOttPageState extends State<UpcomingOttPage>
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) =>
-                    OttDetailPage(data: m, exploreList: _allFilms),
+                builder: (_) => CommonDetailScreen(
+                  data: DataAdapter.normalizeOtt(m),
+                  exploreList: _allFilms
+                      .map((e) => DataAdapter.normalizeOtt(e))
+                      .toList(),
+                  isOtt: true,
+                ),
               ),
             );
           },

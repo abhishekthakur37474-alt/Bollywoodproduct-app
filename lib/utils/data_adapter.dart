@@ -199,6 +199,116 @@ class DataAdapter {
     return null;
   }
 
+  // ──────────────────────────────────────────────────────────────
+  // NORMALIZE METHODS — API data → CommonDetailScreen fields
+  //
+  // CommonDetailScreen field order:
+  //   Heading    → film_name in {film_lang}
+  //   Genre      → data["genres"] List  |  data["genre_list"] String
+  //   Language   → data["film_lang"]
+  //   Release Date → data["release_date_formatted"]   DD MMM YYYY
+  //   CBFC Cert  → data["cbfc_rating"] + data["cbfc_certificate_no"]
+  //   Running Time → data["running_time_minutes/seconds"]  HH:MM:SS
+  //   Starring   → data["lead_cast"]
+  //   Director   → data["directors"]
+  //   Producer   → data["producers"]
+  // ──────────────────────────────────────────────────────────────
+
+  /// OTT API → CommonDetailScreen-ready Map
+  /// Source: ott_language_name, film_image, full_release_date,
+  ///         ott_link, film_youtube, directors[], genres[], ratings{}
+  static Map normalizeOtt(Map m) {
+    final ratings = m["ratings"] is Map ? m["ratings"] as Map : {};
+
+    final ottLink = m["ott_link"]?.toString().trim() ?? "";
+    final youtubeId = m["film_youtube"]?.toString().trim() ?? "";
+    final watchUrl = ottLink.isNotEmpty
+        ? ottLink
+        : youtubeId.isNotEmpty
+            ? "https://www.youtube.com/watch?v=$youtubeId"
+            : "";
+
+    return {
+      ...m,
+      "film_lang":              m["ott_language_name"] ?? "",
+      "film_image_url":         m["film_image"] ?? "",
+      "release_date_formatted": m["full_release_date"] ?? "",
+      "film_watch_url":         watchUrl,
+      "directors":              _joinNames(m["directors"]),
+      "genre_list":             _joinNames(m["genres"]),
+      "cbfc_rating":            ratings["cbfc_rating"] ?? "",
+      "cbfc_certificate_no":    ratings["certificate_no"] ?? "",
+      "running_time_minutes":   ratings["running_time_minutes"] ?? "",
+      "running_time_seconds":   ratings["running_time_seconds"] ?? "",
+    };
+  }
+
+  /// Dubbed API → CommonDetailScreen-ready Map
+  /// Source: dubbed_film_name, original_film_name, dubbed_film_language,
+  ///         youtube_thumbnail, youtube_watch_url, full_date, directors[], genres[]
+  static Map normalizeDubbed(Map m) {
+    return {
+      ...m,
+      "film_name":              m["dubbed_film_name"] ?? m["original_film_name"] ?? "",
+      "film_lang":              m["dubbed_film_language"] ?? "",
+      "film_image_url":         m["youtube_thumbnail"] ?? "",
+      "film_watch_url":         m["youtube_watch_url"] ?? "",
+      "release_date_formatted": m["full_date"] ?? "",
+      "directors":              _joinNames(m["directors"]),
+      "genre_list":             _joinNames(m["genres"]),
+      "producers":              "",
+    };
+  }
+
+  /// Helper — List<{name}> or String → comma-joined String
+  static String _joinNames(dynamic raw) {
+    if (raw is List) {
+      return raw
+          .map((e) => e["name"]?.toString() ?? "")
+          .where((n) => n.isNotEmpty)
+          .join(", ");
+    }
+    return raw?.toString().trim() ?? "";
+  }
+
+  /// FORMAT RELEASE DATE → "19 Jun 2026"
+  /// Accepts: DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD, or already formatted strings
+  static String formatReleaseDate(dynamic raw) {
+    if (raw == null) return "";
+    final str = raw.toString().trim();
+    if (str.isEmpty) return "";
+
+    const months = [
+      "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ];
+
+    try {
+      int d, m, y;
+
+      if (RegExp(r'^\d{4}-\d{2}-\d{2}').hasMatch(str)) {
+        // YYYY-MM-DD
+        final p = str.substring(0, 10).split("-");
+        y = int.parse(p[0]); m = int.parse(p[1]); d = int.parse(p[2]);
+      } else if (str.contains("/")) {
+        // DD/MM/YYYY
+        final p = str.split("/");
+        d = int.parse(p[0]); m = int.parse(p[1]); y = int.parse(p[2]);
+      } else if (RegExp(r'^\d{2}-\d{2}-\d{4}$').hasMatch(str)) {
+        // DD-MM-YYYY
+        final p = str.split("-");
+        d = int.parse(p[0]); m = int.parse(p[1]); y = int.parse(p[2]);
+      } else {
+        return str; // already formatted or unknown
+      }
+
+      if (m < 1 || m > 12) return str;
+      return "$d ${months[m]} $y";
+    } catch (_) {
+      return str;
+    }
+  }
+
   static String? extractYoutubeId(dynamic item) {
     String? raw;
 

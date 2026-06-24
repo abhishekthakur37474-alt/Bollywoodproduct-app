@@ -7,7 +7,7 @@ import '../utils/data_adapter.dart';
 import '../utils/home_cache.dart';
 import '../services/movie_service.dart';
 import '../services/ott_service.dart';
-import 'movie_detail_page.dart';
+import 'common_detail_screen.dart';
 import 'ott_detail_page.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -325,9 +325,10 @@ class _SearchScreenState extends State<SearchScreen> {
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (_) => MovieDetailPage(
+                                          builder: (_) => CommonDetailScreen(
                                             data: movie,
                                             exploreList: _suggestions,
+                                            isLatest: true,
                                           ),
                                         ),
                                       );
@@ -508,9 +509,10 @@ class _SearchScreenState extends State<SearchScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => MovieDetailPage(
+                    builder: (_) => CommonDetailScreen(
                       data: movie,
                       exploreList: _searchResults,
+                      isLatest: true,
                     ),
                   ),
                 );

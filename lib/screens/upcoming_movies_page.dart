@@ -3,7 +3,8 @@ import '../services/movie_service.dart';
 import '../utils/paginated_list.dart';
 import '../utils/data_adapter.dart';
 import '../widgets/movie_list_tile.dart';
-import 'movie_detail_page.dart';
+import 'common_detail_screen.dart';
+import '../utils/home_cache.dart';
 
 class UpcomingMoviesPage extends StatefulWidget {
   const UpcomingMoviesPage({super.key});
@@ -44,8 +45,11 @@ class _UpcomingMoviesPageState extends State<UpcomingMoviesPage> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      MovieDetailPage(data: m, exploreList: _allUpcoming),
+                  builder: (_) => CommonDetailScreen(
+                    data: m,
+                    exploreList: _allUpcoming,
+                    isUpcoming: true,
+                  ),
                 ),
               );
             },

@@ -14,6 +14,7 @@ import 'full_movies_page.dart';
 import 'ott_detail_page.dart';
 import 'search_screen.dart';
 import 'dubbed_movies_page.dart';
+import 'common_detail_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -465,9 +466,57 @@ class _HomePageState extends State<HomePage> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => OttDetailPage(
+                              builder: (_) => CommonDetailScreen(
+                                data: DataAdapter.normalizeOtt(m),
+                                exploreList: HomeCache.ott
+                                    .map((e) => DataAdapter.normalizeOtt(e))
+                                    .toList(),
+                                isOtt: true,
+                              ),
+                            ),
+                          );
+                        } else if (key == "full") {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CommonDetailScreen(
                                 data: m,
-                                exploreList: HomeCache.ott,
+                                exploreList: HomeCache.full,
+                              ),
+                            ),
+                          );
+                        } else if (isDubbed) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CommonDetailScreen(
+                                data: DataAdapter.normalizeDubbed(m),
+                                exploreList: HomeCache.dubbed
+                                    .map((e) => DataAdapter.normalizeDubbed(e))
+                                    .toList(),
+                                isDubbed: true,
+                              ),
+                            ),
+                          );
+                        } else if (key == "upcoming") {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CommonDetailScreen(
+                                data: m,
+                                exploreList: items,
+                                isUpcoming: true,
+                              ),
+                            ),
+                          );
+                        } else if (key == "latest") {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CommonDetailScreen(
+                                data: m,
+                                exploreList: items,
+                                isLatest: true,
                               ),
                             ),
                           );

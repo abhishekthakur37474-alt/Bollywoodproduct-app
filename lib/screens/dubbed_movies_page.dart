@@ -5,7 +5,7 @@ import '../utils/data_adapter.dart';
 import '../utils/paginated_list.dart';
 import '../services/dubbed_service.dart';
 import '../utils/home_cache.dart';
-import 'movie_detail_page.dart';
+import 'common_detail_screen.dart';
 
 class DubbedMoviesPage extends StatefulWidget {
   const DubbedMoviesPage({super.key});
@@ -17,22 +17,53 @@ class DubbedMoviesPage extends StatefulWidget {
 class _DubbedMoviesPageState extends State<DubbedMoviesPage> {
   Future<List> fetch() async {
     final list = await DubbedService.fetchDubbedMovies();
-    // Store in HomeCache for exploreList
     HomeCache.dubbed = list;
     return list;
   }
 
-  // Extract ID from dubbed movie URL
   String _extractDubbedId(dynamic m) {
     final url = m["dubbing_lanaguage_url"]?.toString() ?? "";
     if (url.isEmpty) return "";
-
-    // Extract ID from URL like "https://www.bollywoodproduct.com/media-mission-118-hindi-dubbed-film-137"
     final parts = url.split("-");
-    if (parts.isNotEmpty) {
-      return parts.last; // Get the last part which should be the ID
-    }
+    if (parts.isNotEmpty) return parts.last;
     return "";
+  }
+
+  Map _normalizeData(dynamic m) {
+    final directors = (m["directors"] as List?)
+            ?.map((d) => d["name"]?.toString() ?? "")
+            .where((n) => n.isNotEmpty)
+            .join(", ") ??
+            
+        "";
+        
+
+    final genres = (m["genres"] as List?)
+            ?.map((g) => g["name"]?.toString() ?? "")
+            .where((n) => n.isNotEmpty)
+            .join(", ") ??
+        "";
+
+    final cast = (m["lead_cast"] as List?)
+            ?.map((c) => c["name"]?.toString() ?? "")
+            .where((n) => n.isNotEmpty)
+            .join(", ") ??
+        "";
+
+    print("DEBUG cast=$cast isDubbed=true");
+    return {
+      ...m,
+      "film_name": m["dubbed_film_name"] ?? m["original_film_name"] ?? "",
+      "film_lang": m["dubbed_film_language"] ?? "",
+      "film_image_url": m["youtube_thumbnail"] ?? "",
+      "film_watch_url": m["youtube_watch_url"] ?? "",
+      "youtube_watch_url": m["youtube_watch_url"] ?? "",
+      "directors": directors,
+      "producers": "",
+      "genre_list": genres,
+      "release_date_formatted": m["full_date"] ?? "",
+      "lead_cast_list": cast,
+    };
   }
 
   @override
@@ -65,15 +96,16 @@ class _DubbedMoviesPageState extends State<DubbedMoviesPage> {
             id: safeId,
             title: DataAdapter.extractTitle(m),
             language: DataAdapter.extractDubbedLanguage(m),
-            posterOverride: DataAdapter.extractPoster(
-              m,
-            ), // ✅ Use youtube_thumbnail
+            posterOverride: DataAdapter.extractPoster(m),
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      MovieDetailPage(data: m, exploreList: HomeCache.dubbed),
+                  builder: (_) => CommonDetailScreen(
+                    data: _normalizeData(m),
+                    exploreList: HomeCache.dubbed,
+                    isDubbed: true,
+                  ),
                 ),
               );
             },
