@@ -4,6 +4,7 @@ import '../screens/ott_movies_page.dart';
 import '../screens/trailers_page.dart';
  import '../screens/celebrity_page.dart';
 import '../screens/songs.dart';
+import 'promo_popup.dart';
 // import '../screens/account_page.dart'; // Temporarily hidden
 
 class BottomNav extends StatefulWidget {
@@ -15,6 +16,19 @@ class BottomNav extends StatefulWidget {
 
 class _BottomNavState extends State<BottomNav> {
   int index = 0;
+  bool _promoShown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _showPromoPopup());
+  }
+
+  void _showPromoPopup() {
+    if (_promoShown || !mounted) return;
+    _promoShown = true;
+    PromoPopup.show(context);
+  }
 
   final pages = const [
     HomePage(), // 🏠 Home (Latest + Upcoming + Full)
