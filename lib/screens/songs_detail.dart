@@ -1,10 +1,6 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
-import '../utils/home_cache.dart';
-import '../utils/data_adapter.dart';
-import 'common_detail_screen.dart';
+import 'common.dart';
 
 class SongDetailScreen extends StatefulWidget {
   final Map<String, dynamic> song;
@@ -20,136 +16,6 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  Map<String, dynamic>? _findMovieInCache(String filmId) {
-    final allLists = [
-      HomeCache.latest,
-      HomeCache.upcoming,
-      HomeCache.full,
-      HomeCache.ott,
-      HomeCache.dubbed,
-      HomeCache.movies,
-      HomeCache.ottLatest,
-      HomeCache.ottUpcoming,
-    ];
-    for (final list in allLists) {
-      for (final item in list) {
-        if (item is Map) {
-          final id =
-              (item['film_id'] ?? item['unique_id'] ?? item['id'])?.toString();
-          if (id == filmId) return Map<String, dynamic>.from(item);
-        }
-      }
-    }
-    return null;
-  }
-
-  Future<void> _navigateToMoviePage(BuildContext context, String filmId) async {
-    // 1. Cache check
-    Map<String, dynamic>? movieData = _findMovieInCache(filmId);
-    if (movieData != null) {
-      if (context.mounted) {
-        Navigator.push(context, MaterialPageRoute(
-          builder: (_) => CommonDetailScreen(
-            data: movieData,
-            exploreList: HomeCache.latest.isNotEmpty ? HomeCache.latest : HomeCache.movies,
-          ),
-        ));
-      }
-      return;
-    }
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator(color: Colors.white)),
-    );
-
-    try {
-      // Direct film-details API (most reliable — search screen uses this too)
-      final detailRes = await http.get(Uri.parse(
-        'https://hindi.bollywoodproduct.com/api-film-details.php?unique_id=$filmId',
-      ));
-
-      if (detailRes.statusCode == 200) {
-        final body = detailRes.body.trim();
-        if (body.startsWith('{') || body.startsWith('[')) {
-          final decoded = json.decode(body);
-          // api-film-details returns the movie object directly or wrapped
-          Map<String, dynamic>? found;
-          if (decoded is Map && decoded.isNotEmpty) {
-            // Could be direct object or {movie: {...}}
-            if (decoded.containsKey('film_name') || decoded.containsKey('title')) {
-              found = Map<String, dynamic>.from(decoded);
-            } else {
-              final inner = decoded['movie'] ?? decoded['film'] ?? decoded['data'];
-              if (inner is Map) found = Map<String, dynamic>.from(inner);
-            }
-          }
-          if (found != null && context.mounted) {
-            Navigator.pop(context);
-            Navigator.push(context, MaterialPageRoute(
-              builder: (_) => CommonDetailScreen(
-                data: found!,
-                exploreList: HomeCache.latest.isNotEmpty ? HomeCache.latest : HomeCache.movies,
-              ),
-            ));
-            return;
-          }
-        }
-      }
-
-      // Fallback: search all list APIs by film_id
-      final apis = [
-        'https://bollywoodproduct.com/api-latest-movies.php',
-        'https://www.bollywoodproduct.com/api-upcoming-movies.php',
-        'https://www.bollywoodproduct.com/api-full-movies.php',
-        'https://www.bollywoodproduct.com/api-films.php',
-        'https://www.bollywoodproduct.com/api-dubbed-movies.php',
-        'https://www.bollywoodproduct.com/api-all-movies.php',
-      ];
-
-      final responses = await Future.wait(apis.map((url) => http.get(Uri.parse(url))));
-
-      Map<String, dynamic>? found;
-      outer:
-      for (final res in responses) {
-        if (res.statusCode != 200) continue;
-        final body = res.body.trim();
-        if (!body.startsWith('{') && !body.startsWith('[')) continue;
-        final decoded = json.decode(body);
-        final List list = decoded['movies'] ?? decoded['films'] ?? decoded['data'] ?? (decoded is List ? decoded : []);
-        for (final m in list) {
-          if (m is Map && (m['film_id']?.toString() == filmId || m['unique_id']?.toString() == filmId)) {
-            found = Map<String, dynamic>.from(m);
-            break outer;
-          }
-        }
-      }
-
-      if (context.mounted) Navigator.pop(context);
-
-      if (found != null && context.mounted) {
-        Navigator.push(context, MaterialPageRoute(
-          builder: (_) => CommonDetailScreen(
-            data: found!,
-            exploreList: HomeCache.latest.isNotEmpty ? HomeCache.latest : HomeCache.movies,
-          ),
-        ));
-      } else if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Film not found")),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e")),
-        );
-      }
     }
   }
 
@@ -321,17 +187,27 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
                             colors: [Color(0xff434343), Color(0xff000000)],
                           ),
                           onTap: () {
-                            // film_unique_id matches cache's unique_id → prefer it
-                            final filmId = widget.song['film_unique_id']?.toString()?.isNotEmpty == true
-                                ? widget.song['film_unique_id'].toString()
-                                : widget.song['film_id']?.toString() ?? widget.song['movie_id']?.toString();
-                            if (filmId != null && filmId.isNotEmpty) {
-                              _navigateToMoviePage(context, filmId);
-                            } else {
+                            final uniqueId =
+                                widget.song['film_unique_id']?.toString().trim() ?? "";
+                            if (uniqueId.isEmpty) {
+                              print("🔴 [SONG TAP] film_unique_id empty, film=${widget.song['film_name']}");
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text("Film ID missing in this song's API data")),
                               );
+                              return;
                             }
+                            print("🟢 [SONG TAP] → unique_id=$uniqueId");
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => CommonScreen(
+                                  uniqueId: uniqueId,
+                                  language: widget.song['language']?.toString(),
+                                  onlyFullTrailers: false,
+                                  exploreList: const [],
+                                ),
+                              ),
+                            );
                           },
                         ),
                       ),

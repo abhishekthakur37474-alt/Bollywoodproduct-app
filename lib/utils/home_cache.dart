@@ -16,9 +16,15 @@ class HomeCache {
   static List latestTrailers = []; // api-latest-trailers
   static List mostViewedTrailers = []; // api-most-viewed-trailers
 
-  /// 🔥 NOTIFIER for OTT updates (to refresh UI when background loading completes)
+  /// 🔥 NOTIFIERS — home_page in sab pe listen karta hai taaki data
+  /// jab bhi (aur jitni jaldi) aaye, us section ka UI khud refresh ho jaye.
+  /// Pehle sirf ott/dubbed pe tha, isliye full/upcoming/latest kabhi
+  /// auto-refresh nahi hote the agar build data se pehle ho jata tha.
   static final ValueNotifier<List> ottNotifier = ValueNotifier<List>([]);
   static final ValueNotifier<List> dubbedNotifier = ValueNotifier<List>([]);
+  static final ValueNotifier<List> fullNotifier = ValueNotifier<List>([]);
+  static final ValueNotifier<List> upcomingNotifier = ValueNotifier<List>([]);
+  static final ValueNotifier<List> latestNotifier = ValueNotifier<List>([]);
 
   /// 🔥 CLEAR ALL CACHED DATA (USE ONLY WHEN YOU WANT FORCE RELOAD)
   static void clear() {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -7,7 +8,7 @@ import '../utils/data_adapter.dart';
 import '../utils/home_cache.dart';
 import '../services/movie_service.dart';
 import '../services/ott_service.dart';
-import 'common_detail_screen.dart';
+import 'common.dart';
 import 'ott_detail_page.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -26,9 +27,11 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _showSuggestions = false;
   final Map<String, String?> _posterCache = {};
   final Map<String, Future<String?>> _posterFutures = {};
+  Timer? _debounce; // 🔥 debounce timer — avoids scanning 9687 movies on every keystroke
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -38,7 +41,11 @@ class _SearchScreenState extends State<SearchScreen> {
     return [...HomeCache.films];
   }
 
+  /// 🔥 DEBOUNCED — waits 250ms after user stops typing before scanning list.
+  /// Without this, every single keystroke re-scanned all 9687 movies = laggy UI.
   void _onSearchChanged(String query) {
+    _debounce?.cancel();
+
     if (query.trim().isEmpty) {
       setState(() {
         _suggestions.clear();
@@ -47,19 +54,64 @@ class _SearchScreenState extends State<SearchScreen> {
       return;
     }
 
-    _getSuggestions(query);
+    _debounce = Timer(const Duration(milliseconds: 250), () {
+      _getSuggestions(query);
+    });
   }
 
+  /// 🔥 Uses precomputed '_title_lower' / '_lang_lower' (set once in HomeService
+  /// when films load) instead of calling .toLowerCase() on every movie on every
+  /// keystroke. Falls back to live lowercase if precompute missing (safety net).
+  ///
+  /// 🔥 FIX: ab suggestions sirf match hone pe list order me nahi aatin —
+  /// exact title match sabse top, phir jo title query se START hota hai,
+  /// phir jisme query alag word ki tarah hai, baaki sab last.
+  /// Isliye "Dhamaal 4" search karne pe "Dhamaal" (short/partial) niche
+  /// aur "Dhamaal 4" (exact) sabse upar aayega.
   void _getSuggestions(String query) {
     final seen = <String>{};
     final searchQuery = query.toLowerCase().trim();
-    final suggestions = _allMovies().where((movie) {
-      final title = DataAdapter.extractTitle(movie).toLowerCase().trim();
-      final language = DataAdapter.extractLanguage(movie).toLowerCase().trim();
+
+    final matched = _allMovies().where((movie) {
+      final title = movie['_title_lower'] ??
+          DataAdapter.extractTitle(movie).toLowerCase().trim();
+      final language = movie['_lang_lower'] ??
+          DataAdapter.extractLanguage(movie).toLowerCase().trim();
       if (!title.contains(searchQuery) && !language.contains(searchQuery)) return false;
       return seen.add(_dedupeKey(movie));
-    }).take(5).toList();
+    }).toList();
 
+    // 🔥 rank: 0 = exact title match, 1 = title starts with query,
+    // 2 = query appears as a whole word inside title, 3 = anything else
+    // (substring match anywhere, or only language matched)
+    int rank(dynamic movie) {
+      final title = (movie['_title_lower'] ??
+              DataAdapter.extractTitle(movie).toLowerCase().trim())
+          as String;
+
+      if (title == searchQuery) return 0;
+      if (title.startsWith(searchQuery)) return 1;
+
+      final wordBoundary = RegExp(
+        r'(^|\s)' + RegExp.escape(searchQuery) + r'(\s|$)',
+      );
+      if (wordBoundary.hasMatch(title)) return 2;
+
+      return 3;
+    }
+
+    matched.sort((a, b) {
+      final r = rank(a).compareTo(rank(b));
+      if (r != 0) return r;
+      // same rank → shorter title first (closer to exact match)
+      final ta = (a['_title_lower'] ?? '') as String;
+      final tb = (b['_title_lower'] ?? '') as String;
+      return ta.length.compareTo(tb.length);
+    });
+
+    final suggestions = matched.take(5).toList();
+
+    if (!mounted) return;
     setState(() {
       _suggestions = suggestions;
       _showSuggestions = true;
@@ -155,8 +207,8 @@ class _SearchScreenState extends State<SearchScreen> {
 
       // ✅ STEP 1: Search local cache (instant — includes HomeCache.films)
       var results = _allMovies().where((m) {
-        final t = DataAdapter.extractTitle(m).toLowerCase().trim();
-        final l = DataAdapter.extractLanguage(m).toLowerCase().trim();
+        final t = m['_title_lower'] ?? DataAdapter.extractTitle(m).toLowerCase().trim();
+        final l = m['_lang_lower'] ?? DataAdapter.extractLanguage(m).toLowerCase().trim();
         final y = DataAdapter.extractYear(m);
         if (!seen.add(_dedupeKey(m))) {
           print("🔴 [SEARCH DEDUP] SKIPPED: title=$t | lang=$l | year=$y");
@@ -322,13 +374,21 @@ class _SearchScreenState extends State<SearchScreen> {
                                         ),
                                       );
                                     } else {
+                                      final uniqueId = movie["film_unique_id"]?.toString().trim() ?? "";
+                                      if (uniqueId.isEmpty) {
+                                        print("🔴 [SUGGESTION TAP] film_unique_id empty, film=$title");
+                                        return;
+                                      }
+                                      print("🟢 [SUGGESTION TAP] → unique_id=$uniqueId");
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (_) => CommonDetailScreen(
-                                            data: movie,
+                                          builder: (_) => CommonScreen(
+                                            uniqueId: uniqueId,
+                                            posterUrl: posterUrl,
+                                            language: language,
+                                            onlyFullTrailers: false,
                                             exploreList: _suggestions,
-                                            isLatest: true,
                                           ),
                                         ),
                                       );
@@ -485,6 +545,7 @@ class _SearchScreenState extends State<SearchScreen> {
         final isDubbed = HomeCache.dubbed.contains(movie);
 
         final safeId =
+            movie["film_unique_id"]?.toString() ??
             movie["film_id"]?.toString() ??
             movie["unique_id"]?.toString() ??
             movie["ott_id"]?.toString() ??
@@ -506,13 +567,21 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
                 );
               } else {
+                final uniqueId = movie["film_unique_id"]?.toString().trim() ?? "";
+                if (uniqueId.isEmpty) {
+                  print("🔴 [SEARCH TAP] film_unique_id empty, film=${DataAdapter.extractTitle(movie)}");
+                  return;
+                }
+                print("🟢 [SEARCH TAP] → unique_id=$uniqueId");
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => CommonDetailScreen(
-                      data: movie,
+                    builder: (_) => CommonScreen(
+                      uniqueId: uniqueId,
+                      posterUrl: DataAdapter.extractPoster(movie),
+                      language: DataAdapter.extractLanguage(movie),
+                      onlyFullTrailers: false,
                       exploreList: _searchResults,
-                      isLatest: true,
                     ),
                   ),
                 );

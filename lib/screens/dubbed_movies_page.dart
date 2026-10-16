@@ -5,7 +5,7 @@ import '../utils/data_adapter.dart';
 import '../utils/paginated_list.dart';
 import '../services/dubbed_service.dart';
 import '../utils/home_cache.dart';
-import 'common_detail_screen.dart';
+import 'common.dart';
 
 class DubbedMoviesPage extends StatefulWidget {
   const DubbedMoviesPage({super.key});
@@ -29,41 +29,10 @@ class _DubbedMoviesPageState extends State<DubbedMoviesPage> {
     return "";
   }
 
-  Map _normalizeData(dynamic m) {
-    final directors = (m["directors"] as List?)
-            ?.map((d) => d["name"]?.toString() ?? "")
-            .where((n) => n.isNotEmpty)
-            .join(", ") ??
-            
-        "";
-        
-
-    final genres = (m["genres"] as List?)
-            ?.map((g) => g["name"]?.toString() ?? "")
-            .where((n) => n.isNotEmpty)
-            .join(", ") ??
-        "";
-
-    final cast = (m["lead_cast"] as List?)
-            ?.map((c) => c["name"]?.toString() ?? "")
-            .where((n) => n.isNotEmpty)
-            .join(", ") ??
-        "";
-
-    print("DEBUG cast=$cast isDubbed=true");
-    return {
-      ...m,
-      "film_name": m["dubbed_film_name"] ?? m["original_film_name"] ?? "",
-      "film_lang": m["dubbed_film_language"] ?? "",
-      "film_image_url": m["youtube_thumbnail"] ?? "",
-      "film_watch_url": m["youtube_watch_url"] ?? "",
-      "youtube_watch_url": m["youtube_watch_url"] ?? "",
-      "directors": directors,
-      "producers": "",
-      "genre_list": genres,
-      "release_date_formatted": m["full_date"] ?? "",
-      "lead_cast_list": cast,
-    };
+  String? _resolveUniqueId(dynamic m) {
+    final direct = m["film_unique_id"]?.toString().trim() ?? "";
+    if (direct.isNotEmpty) return direct;
+    return DataAdapter.extractUniqueIdFromFilmUrl(m);
   }
 
   @override
@@ -98,13 +67,20 @@ class _DubbedMoviesPageState extends State<DubbedMoviesPage> {
             language: DataAdapter.extractDubbedLanguage(m),
             posterOverride: DataAdapter.extractPoster(m),
             onTap: () {
+              final uniqueId = _resolveUniqueId(m) ?? "";
+              print("🟡 [DUBBED TAP] unique_id=$uniqueId");
+              if (uniqueId.isEmpty) return;
+
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => CommonDetailScreen(
-                    data: _normalizeData(m),
-                    exploreList: HomeCache.dubbed,
+                  builder: (_) => CommonScreen(
+                    uniqueId: uniqueId,
+                    posterUrl: DataAdapter.extractPoster(m),
+                    language: DataAdapter.extractDubbedLanguage(m),
+                    onlyFullTrailers: false,
                     isDubbed: true,
+                    exploreList: HomeCache.dubbed,
                   ),
                 ),
               );

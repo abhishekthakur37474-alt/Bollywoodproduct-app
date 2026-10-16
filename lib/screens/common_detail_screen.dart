@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/report_service.dart';
+import '../services/movie_service.dart';
 import '../utils/data_adapter.dart';
 import '../widgets/movie_tile.dart';
 
@@ -96,6 +98,12 @@ class CommonDetailScreen extends StatelessWidget {
     return "";
   }
 
+  // 🎬 api-film.php detail → data["featuring_cast"]  (lead cast, flat String)
+  String get _featuring => data["featuring_cast"]?.toString().trim() ?? "";
+
+  // 🎬 api-film.php detail → data["other_cast"]  (remaining cast, flat String)
+  String get _otherCast => data["other_cast"]?.toString().trim() ?? "";
+
   // 🎬 ALL APIs → data["directors"]  (flat String, may be empty)
   String get _director => data["directors"]?.toString().trim() ?? "";
 
@@ -125,23 +133,31 @@ class CommonDetailScreen extends StatelessWidget {
     int min = int.tryParse(data["running_time_minutes"]?.toString() ?? "") ?? 0;
     int sec = int.tryParse(data["running_time_seconds"]?.toString() ?? "") ?? 0;
     if (min == 0 && sec == 0) {
-      min = int.tryParse(data["cbfc_running_time_minutes"]?.toString() ?? "") ?? 0;
-      sec = int.tryParse(data["cbfc_running_time_seconds"]?.toString() ?? "") ?? 0;
+      min = int.tryParse(data["cbfc_running_time_minutes"]?.toString() ?? "")
+          ?? int.tryParse(data["film_cbfc_running_time_minutes"]?.toString() ?? "") ?? 0;
+      sec = int.tryParse(data["cbfc_running_time_seconds"]?.toString() ?? "")
+          ?? int.tryParse(data["film_cbfc_running_time_seconds"]?.toString() ?? "") ?? 0;
     }
     if (min == 0 && sec == 0) return "";
     final hh = min ~/ 60;
     final mm = min % 60;
-    final parts = <String>[];
-    if (hh > 0) parts.add("$hh Hour${hh > 1 ? 's' : ''}");
-    if (mm > 0) parts.add("$mm Minute${mm > 1 ? 's' : ''}");
-    if (sec > 0) parts.add("$sec Second${sec > 1 ? 's' : ''}");
-    return parts.join(" ");
+    final ss = sec;
+    return "${hh.toString().padLeft(2, '0')}:${mm.toString().padLeft(2, '0')}:${ss.toString().padLeft(2, '0')}";
   }
 
-  // 🔞 Upcoming/Latest/OTT → data["cbfc_rating"]
-  // e.g. "U", "UA", "A", "UA16+"
-  String get _cbfc => data["cbfc_rating"]?.toString().trim() ?? "";
-  String get _cbfcCertNo => data["cbfc_certificate_no"]?.toString().trim() ?? "";
+  // 🔞 ALL APIs → cbfc_rating or film_cbfc_rating
+  String get _cbfc {
+    final v = data["cbfc_rating"]?.toString().trim() ?? "";
+    if (v.isNotEmpty) return v;
+    return data["film_cbfc_rating"]?.toString().trim() ?? "";
+  }
+
+  // Certificate no → cbfc_certificate_no or film_cbfc_certificate_no
+  String get _cbfcCertNo {
+    final v = data["cbfc_certificate_no"]?.toString().trim() ?? "";
+    if (v.isNotEmpty) return v;
+    return data["film_cbfc_certificate_no"]?.toString().trim() ?? "";
+  }
 
   // 📺 OTT API only → data["ott_platform"]
   // e.g. "Netflix", "Prime Video"
@@ -422,6 +438,95 @@ class CommonDetailScreen extends StatelessWidget {
     );
   }
 
+  // 🟡 Keys actually rendered on screen — highlighted in _showJsonView
+  static const Set<String> _usedJsonKeys = {
+    "film_name", "film_lang", "genre_list", "genres",
+    "release_date_formatted", "date_release", "month_release", "year_release",
+    "cbfc_rating", "cbfc_certificate_no",
+    "running_time_minutes", "running_time_seconds",
+    "cbfc_running_time_minutes", "cbfc_running_time_seconds",
+    "featuring_cast", "other_cast", "lead_cast", "lead_cast_list", "lead_cast_line",
+    "directors", "producers", "film_image_url", "film_watch_url",
+    "trailers", "ott_platform", "unique_id", "film_id",
+  };
+
+  void _showJsonView(BuildContext context) {
+    String pretty;
+    try {
+      pretty = const JsonEncoder.withIndent("  ").convert(data);
+    } catch (_) {
+      pretty = data.toString();
+    }
+    final lines = pretty.split("\n");
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xff111111),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("Raw JSON Data",
+                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white70),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Container(width: 12, height: 12, color: const Color(0xffD4AF37)),
+                  const SizedBox(width: 6),
+                  const Text("= shown on this screen",
+                      style: TextStyle(color: Colors.white54, fontSize: 12)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  child: SelectableText.rich(
+                    TextSpan(
+                      children: lines.map((line) {
+                        final match = RegExp(r'^\s*"([A-Za-z0-9_]+)"\s*:').firstMatch(line);
+                        final key = match?.group(1);
+                        final isUsed = key != null && _usedJsonKeys.contains(key);
+                        return TextSpan(
+                          text: "$line\n",
+                          style: TextStyle(
+                            fontFamily: "monospace",
+                            fontSize: 12,
+                            height: 1.5,
+                            color: isUsed ? const Color(0xffD4AF37) : Colors.grey.shade400,
+                            fontWeight: isUsed ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   InputDecoration _inputDeco(String hint) => InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey.shade500),
@@ -432,6 +537,48 @@ class CommonDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Entry points that only have unique_id pass {"_fetchOnly": true, "film_unique_id": id}
+    // → fetch + normalize api-film.php, then re-render self with full data
+    final needsFetch = data["_fetchOnly"] == true;
+    if (needsFetch) {
+      final uniqueId = data["film_unique_id"]?.toString() ?? "";
+      return FutureBuilder<Map?>(
+        future: MovieService.fetchFilmDetailByUniqueId(uniqueId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Scaffold(
+              backgroundColor: Colors.black,
+              body: Center(child: CircularProgressIndicator(color: Color(0xffD4AF37))),
+            );
+          }
+          final normalized = snapshot.data;
+          if (normalized == null) {
+            return Scaffold(
+              backgroundColor: Colors.black,
+              appBar: AppBar(
+                backgroundColor: Colors.black,
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+              body: const Center(
+                child: Text("Movie not found", style: TextStyle(color: Colors.white)),
+              ),
+            );
+          }
+          return CommonDetailScreen(
+            data: normalized,
+            exploreList: exploreList,
+            isDubbed: isDubbed,
+            isUpcoming: isUpcoming,
+            isLatest: isLatest,
+            isOtt: isOtt,
+          );
+        },
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xff0F0F0F),
       body: CustomScrollView(
@@ -439,6 +586,82 @@ class CommonDetailScreen extends StatelessWidget {
           _buildAppBar(context),
           SliverToBoxAdapter(child: _buildBody(context)),
         ],
+      ),
+      floatingActionButton: data["_raw_debug_json"] != null
+          ? FloatingActionButton(
+              backgroundColor: const Color(0xffD4AF37),
+              onPressed: () => _showRawJson(context),
+              child: const Icon(Icons.code, color: Colors.black),
+            )
+          : null,
+    );
+  }
+
+  // 🔴 Fields actually shown on this page — highlighted red in raw json viewer
+  static const Set<String> _shownFieldKeys = {
+    "name",
+    "cbfc_rating",
+    "cbfc_certificate_no",
+    "cbfc_running_time_minutes",
+    "cbfc_running_time_seconds",
+    "release_date_month_year",
+    "genre_line",
+    "language_line",
+    "lead_casts_list",
+    "lead_casts_line",
+    "casts_list",
+    "cast_line",
+    "directors_list_name",
+    "producers_list_name",
+    "youtube_image_url",
+    "youtube",
+    "link",
+    "language",
+  };
+
+  List<TextSpan> _highlightedJsonSpans(String raw) {
+    final keyRegex = RegExp(r'^(\s*)"([A-Za-z_]+)"(\s*:\s*)(.*)$');
+    final spans = <TextSpan>[];
+    for (final line in raw.split("\n")) {
+      final m = keyRegex.firstMatch(line);
+      if (m != null && _shownFieldKeys.contains(m.group(2))) {
+        spans.add(TextSpan(
+          text: "${m.group(1)}\"${m.group(2)}\"${m.group(3)}",
+          style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+        ));
+        spans.add(TextSpan(text: "${m.group(4)}\n"));
+      } else {
+        spans.add(TextSpan(text: "$line\n"));
+      }
+    }
+    return spans;
+  }
+
+  void _showRawJson(BuildContext context) {
+    final raw = data["_raw_debug_json"]?.toString() ?? "";
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            title: const Text("Raw API JSON"),
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(12),
+            child: SelectableText.rich(
+              TextSpan(
+                children: _highlightedJsonSpans(raw),
+                style: const TextStyle(fontFamily: "monospace", fontSize: 12, color: Colors.white70),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -504,20 +727,19 @@ class CommonDetailScreen extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          // Info rows — keys per API noted in getters above
-          if (_genre.isNotEmpty) _infoRow("Genre", _genre),             // data["genre_list"] or data["genres"]
-          if (_language.isNotEmpty) _infoRow("Language", _language),   // data["film_lang"]
-          if (_cast.isNotEmpty)
-            _infoRow(isUpcoming ? "Starring" : "Starring", _cast),    // data["lead_cast*"]
-          if (_releaseDate.isNotEmpty) _infoRow("Release Date", _releaseDate), // data["release_date_formatted"]
-          if (_director.isNotEmpty) _infoRow("Director", _director),   // data["directors"]
-          if (_producer.isNotEmpty) _infoRow("Producer", _producer),   // data["producers"]
-          if ((isUpcoming || isLatest || isOtt) && _cbfc.isNotEmpty) ...[      // data["cbfc_rating"]
-            const SizedBox(height: 6),
-            _cbfcBadge(_cbfc),
-          ],
-
-          if (_runningTime.isNotEmpty) _infoRow("Running Time", _runningTime), // Latest API
+          // Info rows
+          if (_genre.isNotEmpty) _infoRow("Genre", _genre),
+          if (_language.isNotEmpty) _infoRow("Language", _language),
+          if (_releaseDate.isNotEmpty) _infoRow("Release Date", _releaseDate),
+          if (_cbfc.isNotEmpty) _cbfcBadge(_cbfc),
+          if (_runningTime.isNotEmpty) _infoRow("Running Time", _runningTime),
+          if (_featuring.isNotEmpty)
+            _infoRow("Featuring", _featuring)
+          else if (_cast.isNotEmpty)
+            _infoRow("Starring", _cast),
+          if (_otherCast.isNotEmpty) _infoRow("Other Casts", _otherCast),
+          if (_director.isNotEmpty) _infoRow("Director", _director),
+          if (_producer.isNotEmpty) _infoRow("Producer", _producer),
 
           const SizedBox(height: 28),
 
@@ -558,6 +780,24 @@ class CommonDetailScreen extends StatelessWidget {
                 onPressed: () => _showWatchOptions(context),
               ),
             ),
+
+          const SizedBox(height: 12),
+
+          // 🟡 DEBUG: View JSON — raw data with used-fields highlighted
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              icon: const Icon(Icons.data_object, color: Colors.white70, size: 18),
+              label: const Text("View JSON",
+                  style: TextStyle(color: Colors.white70, fontSize: 15)),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                side: BorderSide(color: Colors.grey.shade700),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              onPressed: () => _showJsonView(context),
+            ),
+          ),
 
           const SizedBox(height: 12),
 

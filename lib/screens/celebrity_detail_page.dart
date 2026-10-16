@@ -1,8 +1,5 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'movie_detail_page.dart';
-import '../utils/home_cache.dart';
+import 'common.dart';
 
 class CelebrityDetailPage extends StatefulWidget {
   final dynamic celeb;
@@ -52,82 +49,79 @@ class _CelebrityDetailPageState extends State<CelebrityDetailPage> {
     return age;
   }
 
-  Map<String, dynamic>? _findMovieInCache(String uniqueId) {
-    final allLists = [
-      HomeCache.latest, HomeCache.upcoming, HomeCache.full,
-      HomeCache.ott, HomeCache.dubbed, HomeCache.movies,
-      HomeCache.ottLatest, HomeCache.ottUpcoming,
-    ];
-    for (final list in allLists) {
-      for (final item in list) {
-        if (item is Map) {
-          final id = (item['unique_id'] ?? item['film_id'] ?? item['id'])?.toString();
-          if (id == uniqueId) return Map<String, dynamic>.from(item);
-        }
-      }
-    }
-    return null;
+  bool get _isDeceased {
+    final dy = celeb['death_year']?.toString().trim() ?? '';
+    return dy.isNotEmpty && dy != '0';
   }
 
-  Future<void> _navigateToMoviePage(BuildContext context, String uniqueId) async {
-    // ✅ ALWAYS fetch full details from API first (cache has incomplete data — no genre/director/watch button)
-    showDialog(context: context, barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator(color: Colors.white)));
+  String _formatFullDeathDate() {
+    final d = celeb['death_date']?.toString() ?? '';
+    final m = celeb['death_month']?.toString() ?? '';
+    final y = celeb['death_year']?.toString() ?? '';
+    if (d.isEmpty || m.isEmpty) return 'Unknown';
+    const months = [
+      '',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    final mInt = int.tryParse(m) ?? 0;
+    final monthName = (mInt >= 1 && mInt <= 12) ? months[mInt] : '';
+    return '$d $monthName${y.isNotEmpty ? ', $y' : ''}';
+  }
 
-    try {
-      final res = await http.get(Uri.parse(
-        'https://hindi.bollywoodproduct.com/api-film-details.php?unique_id=$uniqueId',
-      ));
-      if (res.statusCode == 200) {
-        final body = res.body.trim();
-        // ✅ Strip PHP warnings before JSON parse
-        final jsonStart = body.indexOf('{');
-        final cleanBody = jsonStart >= 0 ? body.substring(jsonStart) : body;
-        if (cleanBody.startsWith('{') || cleanBody.startsWith('[')) {
-          final decoded = json.decode(cleanBody);
-          Map<String, dynamic>? found;
-          if (decoded is Map && decoded.isNotEmpty) {
-            if (decoded.containsKey('film_name') || decoded.containsKey('title')) {
-              found = Map<String, dynamic>.from(decoded);
-            } else {
-              final inner = decoded['movie'] ?? decoded['film'] ?? decoded['data'];
-              if (inner is Map) found = Map<String, dynamic>.from(inner);
-            }
-          }
-          if (found != null && context.mounted) {
-            // ✅ NORMALIZE: API response fields → MovieDetailPage expected format
-            found['unique_id'] ??= uniqueId;
-            found['film_lang'] ??= found['film_language'];
-            found['trailer_category'] ??= found['film_type'];
-            final glance = found['film_at_a_glance'];
-            if (glance is Map) {
-              found['film_lang'] ??= glance['Language'];
-            }
+  int? _calculateAgeAtDeath() {
+    final bd = int.tryParse(celeb['birth_date']?.toString() ?? '');
+    final bm = int.tryParse(celeb['birth_month']?.toString() ?? '');
+    final by = int.tryParse(celeb['birth_year']?.toString() ?? '');
+    final dd = int.tryParse(celeb['death_date']?.toString() ?? '');
+    final dm = int.tryParse(celeb['death_month']?.toString() ?? '');
+    final dyr = int.tryParse(celeb['death_year']?.toString() ?? '');
+    if (bd == null || bm == null || by == null ||
+        dd == null || dm == null || dyr == null) return null;
+    int age = dyr - by;
+    if (dm < bm || (dm == bm && dd < bd)) age--;
+    return age;
+  }
 
-            Navigator.pop(context);
-            Navigator.push(context, MaterialPageRoute(
-              builder: (_) => MovieDetailPage(data: found!, exploreList: HomeCache.latest.isNotEmpty ? HomeCache.latest : HomeCache.movies),
-            ));
-            return;
-          }
-        }
-      }
-    } catch (_) {}
+  // ✅ SAME method as common page (home_page.dart): id = film_unique_id
+  // (film_unique_id hi asli key hai — unique_id sirf fallback, kabhi missing hoti hai)
+  String _extractFilmUniqueId(dynamic film) {
+    if (film is! Map) return '';
+    return (film['film_unique_id'] ?? film['unique_id'] ?? film['film_id'] ?? '')
+        .toString()
+        .trim();
+  }
 
-    // ✅ FALLBACK: use cache data if API fails
-    final movieData = _findMovieInCache(uniqueId);
-    if (context.mounted) {
-      Navigator.pop(context);
-      if (movieData != null) {
-        Navigator.push(context, MaterialPageRoute(
-          builder: (_) => MovieDetailPage(data: movieData, exploreList: HomeCache.latest.isNotEmpty ? HomeCache.latest : HomeCache.movies),
-        ));
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Film not found')),
-        );
-      }
+  void _navigateToMoviePage(BuildContext context, dynamic film) {
+    final uniqueId = _extractFilmUniqueId(film);
+    if (uniqueId.isEmpty) {
+      print("🔴 [CELEB TAP] unique_id empty, film=${film is Map ? film['name'] : film}");
+      return;
     }
+    final poster = film is Map ? (film['thumbnail']?.toString() ?? '') : '';
+    final language = film is Map ? (film['language']?.toString() ?? '') : '';
+    print("🟢 [CELEB TAP] → unique_id=$uniqueId");
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CommonScreen(
+          uniqueId: uniqueId,
+          posterUrl: poster.isNotEmpty ? poster : null,
+          language: language.isNotEmpty ? language : null,
+          onlyFullTrailers: false,
+        ),
+      ),
+    );
   }
 
   @override
@@ -140,7 +134,13 @@ class _CelebrityDetailPageState extends State<CelebrityDetailPage> {
     final nationality = celeb['nationality']?.toString() ?? '';
     final noOfFilms = celeb['no_of_films']?.toString() ?? '';
     final totalMovies = celeb['total_movies']?.toString() ?? noOfFilms;
-    final age = _calculateAge();
+    final isDeceased = _isDeceased;
+    final age = isDeceased ? _calculateAgeAtDeath() : _calculateAge();
+    final birthYear = celeb['birth_year']?.toString() ?? '';
+    final deathYear = celeb['death_year']?.toString() ?? '';
+    final lifespan = (birthYear.isNotEmpty && deathYear.isNotEmpty)
+        ? '$birthYear - $deathYear'
+        : null;
 
     final List<dynamic> upcomingMovies = celeb['upcoming_movies'] ?? [];
     final List<dynamic> filmography = celeb['filmography'] ?? [];
@@ -221,6 +221,17 @@ class _CelebrityDetailPageState extends State<CelebrityDetailPage> {
                             textAlign: TextAlign.center,
                           ),
                         ),
+                        if (isDeceased && lifespan != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            '($lifespan)',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.6),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                         if (roles.isNotEmpty) ...[
                           const SizedBox(height: 6),
                           Text(
@@ -270,7 +281,7 @@ class _CelebrityDetailPageState extends State<CelebrityDetailPage> {
                         Expanded(
                           child: _StatBox(
                             value: '$age',
-                            label: 'Years Old',
+                            label: 'Age',
                             icon: Icons.cake_outlined,
                           ),
                         ),
@@ -298,7 +309,7 @@ class _CelebrityDetailPageState extends State<CelebrityDetailPage> {
                       children: [
                         _DetailRow(
                           icon: Icons.cake_outlined,
-                          label: 'Birthday',
+                          label: isDeceased ? 'Birth Anniversary' : 'Birthday',
                           value: _formatFullDob(),
                         ),
                         if (gender.isNotEmpty)
@@ -322,8 +333,15 @@ class _CelebrityDetailPageState extends State<CelebrityDetailPage> {
                         if (nationality.isNotEmpty)
                           _DetailRow(
                             icon: Icons.flag_outlined,
-                            label: 'Nationality',
+                            label: 'Nationality/Citizenship',
                             value: nationality,
+                            isLast: !isDeceased,
+                          ),
+                        if (isDeceased)
+                          _DetailRow(
+                            icon: Icons.local_florist_outlined,
+                            label: 'Death Anniversary',
+                            value: _formatFullDeathDate(),
                             isLast: true,
                           ),
                       ],
@@ -346,10 +364,11 @@ class _CelebrityDetailPageState extends State<CelebrityDetailPage> {
                         itemCount: upcomingMovies.length,
                         separatorBuilder: (_, __) => const SizedBox(width: 12),
                         itemBuilder: (ctx, i) {
-                          final uid = upcomingMovies[i]['unique_id']?.toString() ?? '';
+                          final film = upcomingMovies[i];
+                          final uid = _extractFilmUniqueId(film);
                           return GestureDetector(
-                            onTap: uid.isNotEmpty ? () => _navigateToMoviePage(context, uid) : null,
-                            child: _MovieCard(movie: upcomingMovies[i], showYear: true),
+                            onTap: uid.isNotEmpty ? () => _navigateToMoviePage(context, film) : null,
+                            child: _MovieCard(movie: film, showYear: true),
                           );
                         },
                       ),
@@ -385,10 +404,11 @@ class _CelebrityDetailPageState extends State<CelebrityDetailPage> {
                           endIndent: 16,
                         ),
                         itemBuilder: (ctx, i) {
-                          final uid = filmography[i]['unique_id']?.toString() ?? '';
+                          final film = filmography[i];
+                          final uid = _extractFilmUniqueId(film);
                           return GestureDetector(
-                            onTap: uid.isNotEmpty ? () => _navigateToMoviePage(context, uid) : null,
-                            child: _FilmographyRow(film: filmography[i]),
+                            onTap: uid.isNotEmpty ? () => _navigateToMoviePage(context, film) : null,
+                            child: _FilmographyRow(film: film),
                           );
                         },
                       ),

@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-import 'common_detail_screen.dart';
+import 'common.dart';
 import '../widgets/movie_tile.dart';
 import '../utils/data_adapter.dart';
+import '../utils/home_cache.dart';
 
 class MoviePage extends StatefulWidget {
   const MoviePage({super.key});
@@ -24,12 +25,23 @@ class _MoviePageState extends State<MoviePage> {
   }
 
   Future<void> fetchMovies() async {
+    // 🔥 FIX: pehle ye page cache ignore karke hamesha apna fresh
+    // http.get marta tha, chahe HomeCache.latest already load ho chuka ho.
+    // Ab pehle cache check hota hai — turant dikhta hai, koi wait nahi.
+    if (HomeCache.latest.isNotEmpty) {
+      print("🟢 [MOVIE PAGE] Using HomeCache.latest: ${HomeCache.latest.length}");
+      movies = HomeCache.latest;
+      if (mounted) setState(() => loading = false);
+      return;
+    }
+
     final url = Uri.parse("https://bollywoodproduct.com/api-latest-movies.php");
 
     try {
       final res = await http.get(url);
       if (res.statusCode == 200 && res.body.trim().startsWith('{')) {
         movies = jsonDecode(res.body)["movies"] ?? [];
+        HomeCache.latest = movies; // ✅ cache save so other pages benefit too
       }
     } catch (_) {}
 
@@ -103,19 +115,24 @@ class _MoviePageState extends State<MoviePage> {
               delegate: SliverChildBuilderDelegate((context, i) {
                 final m = movies[i];
 
+                final uniqueId = (m["film_unique_id"] ?? m["unique_id"])?.toString() ?? "";
+
                 return MovieTile(
-                  id: m["unique_id"],
+                  id: uniqueId,
                   title: DataAdapter.extractTitle(m),
                   year: DataAdapter.extractYear(m),
                   posterOverride: DataAdapter.extractPoster(m), // ✅ SAME AS OTT
                   onTap: () {
+                    if (uniqueId.isEmpty) return;
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => CommonDetailScreen(
-                          data: m, // ✅ PASS FULL DATA
+                        builder: (_) => CommonScreen(
+                          uniqueId: uniqueId,
+                          posterUrl: DataAdapter.extractPoster(m),
+                          language: DataAdapter.extractLanguage(m),
+                          onlyFullTrailers: false,
                           exploreList: movies.take(20).toList(), // ✅ FAST
-                          isLatest: true,
                         ),
                       ),
                     );

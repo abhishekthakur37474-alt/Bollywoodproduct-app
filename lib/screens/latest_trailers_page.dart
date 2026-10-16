@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/trailer_service.dart';
 import '../utils/paginated_list.dart';
 import '../utils/data_adapter.dart';
-import 'trailer_detail_page.dart';
+import 'common.dart';
 
 class LatestTrailersPage extends StatefulWidget {
   const LatestTrailersPage({super.key});
@@ -40,9 +40,23 @@ class _LatestTrailersPageState extends State<LatestTrailersPage>
           padding: const EdgeInsets.only(bottom: 18),
           child: GestureDetector(
             onTap: () {
+              final uniqueId = m["film_unique_id"]?.toString().trim() ?? "";
+              if (uniqueId.isEmpty) {
+                print("🔴 [LATEST TRAILER TAP] film_unique_id empty, film=$title");
+                return;
+              }
+              print("🟢 [LATEST TRAILER TAP] → unique_id=$uniqueId");
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => TrailerDetailPage(data: m)),
+                MaterialPageRoute(
+                  builder: (_) => CommonScreen(
+                    uniqueId: uniqueId,
+                    posterUrl: poster,
+                    language: language,
+                    onlyFullTrailers: false,
+                    exploreList: const [],
+                  ),
+                ),
               );
             },
             child: Column(

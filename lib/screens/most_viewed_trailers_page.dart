@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../utils/paginated_list.dart';
 import '../utils/data_adapter.dart';
-import '../widgets/trailer_card.dart';
+import 'common.dart';
 
 class MostViewedTrailersPage extends StatelessWidget {
   const MostViewedTrailersPage({super.key});
@@ -13,68 +13,17 @@ class MostViewedTrailersPage extends StatelessWidget {
       "https://www.bollywoodproduct.com/api-most-viewed-trailers.php";
 
   Future<List> fetch() async {
-    print("🟡 [MOST VIEWED] Fetching trailers (NEW API)");
+    print("🟡 [MOST VIEWED] Fetching trailers");
 
     final res = await http.get(Uri.parse(apiUrl));
-
-    print("📡 Status Code: ${res.statusCode}");
 
     if (res.statusCode != 200) return [];
 
     final raw = jsonDecode(res.body);
     final List rawList = raw["trailers"] ?? [];
 
-    print("📦 Received from API: ${rawList.length}");
-
-    /// ❌ REMOVE FULL MOVIES
-    final filtered = rawList.where((m) {
-      final title =
-      DataAdapter.extractTitle(m).toLowerCase();
-      final cat =
-      (m["category"] ?? "").toString().toLowerCase();
-
-      return !title.contains("full movie") &&
-          !cat.contains("full movie");
-    }).toList();
-
-    /// 🔥 GROUP SAME MOVIE (MULTI-LANGUAGE SUPPORT)
-    final Map<String, Map> grouped = {};
-
-    for (final item in filtered) {
-      final title =
-      DataAdapter.extractTitle(item);
-
-      if (!grouped.containsKey(title)) {
-        grouped[title] = {
-          ...item,
-          "trailers": [item],
-          "languages": [
-            (item["language"] ?? "Unknown").toString()
-          ]
-        };
-      } else {
-        grouped[title]!["trailers"].add(item);
-
-        final lang =
-        (item["language"] ?? "Unknown").toString();
-
-        if (!grouped[title]!["languages"]
-            .contains(lang)) {
-          grouped[title]!["languages"].add(lang);
-        }
-      }
-    }
-
-    final finalList = grouped.values.toList();
-
-    print("🟢 FINAL GROUPED COUNT: ${finalList.length}");
-
-    if (finalList.isNotEmpty) {
-      print(
-          "🥇 First item: ${DataAdapter.extractTitle(finalList.first)}");
-    }
-
-    return finalList;
+    print("🟢 [MOST VIEWED] Received: ${rawList.length}");
+    return rawList;
   }
 
   @override
@@ -82,7 +31,94 @@ class MostViewedTrailersPage extends StatelessWidget {
     return PaginatedList(
       pageSize: 15,
       fetch: fetch,
-      builder: (m) => TrailerCard(data: m),
+      builder: (m) {
+        final title = m["film_name"] ?? m["trailer_name"] ?? "Trailer";
+        final language = (m["language"] ?? "Hindi").toString();
+        final trailerCategory = m["trailer_category"] ?? "Trailer";
+        final releaseDate = m["release_date"]?.toString() ?? "";
+
+        final yt = DataAdapter.extractYoutubeId(m);
+        final String? poster = yt != null
+            ? "https://img.youtube.com/vi/$yt/0.jpg"
+            : null;
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 18),
+          child: GestureDetector(
+            onTap: () {
+              // ✅ SAME method as common page (home_page.dart / latest_trailers_page.dart)
+              final uniqueId = m["film_unique_id"]?.toString().trim() ?? "";
+              if (uniqueId.isEmpty) {
+                print("🔴 [MOST VIEWED TAP] film_unique_id empty, film=$title");
+                return;
+              }
+              print("🟢 [MOST VIEWED TAP] → unique_id=$uniqueId");
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CommonScreen(
+                    uniqueId: uniqueId,
+                    posterUrl: poster,
+                    language: language,
+                    onlyFullTrailers: false,
+                    exploreList: const [],
+                  ),
+                ),
+              );
+            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                if (poster != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: Image.network(poster, fit: BoxFit.cover),
+                    ),
+                  )
+                else
+                  Container(
+                    height: 180,
+                    decoration: BoxDecoration(
+                      color: Colors.white10,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.play_circle_outline,
+                        color: Colors.white38, size: 48),
+                  ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text(
+                      "$language • $trailerCategory",
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.white.withOpacity(0.6)),
+                    ),
+                    if (releaseDate.isNotEmpty) ...[
+                      Text(
+                        "  •  $releaseDate",
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.white.withOpacity(0.4)),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

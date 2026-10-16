@@ -17,6 +17,9 @@ class HomeService {
 
     try {
       /// 🔥 STEP 1: Load critical data first without timeout for splash screen
+      /// ✅ api-films.php added here too (now fast — light query + gzip) so
+      /// search suggestions have data ready as soon as splash finishes,
+      /// instead of waiting for background _loadExtraData().
       final criticalResults = await Future.wait([
         http.get(
           Uri.parse("https://bollywoodproduct.com/api-latest-movies.php"),
@@ -27,20 +30,28 @@ class HomeService {
         http.get(
           Uri.parse("https://www.bollywoodproduct.com/api-full-movies.php"),
         ),
+        http.get(
+          Uri.parse("https://www.bollywoodproduct.com/api-films.php"),
+        ),
       ]);
 
       final latestRes = criticalResults[0];
       final upcomingRes = criticalResults[1];
       final fullRes = criticalResults[2];
+      final filmsRes = criticalResults[3];
 
       if (latestRes.statusCode == 200 &&
           latestRes.body.trim().startsWith("{")) {
         HomeCache.latest = jsonDecode(latestRes.body)["movies"] ?? [];
+        // 🔥 FIX: notifier set — home_page ka "latest" section ab
+        // build ke baad bhi data aane pe auto-refresh ho jayega.
+        HomeCache.latestNotifier.value = HomeCache.latest;
       }
 
       if (upcomingRes.statusCode == 200 &&
           upcomingRes.body.trim().startsWith("{")) {
         HomeCache.upcoming = jsonDecode(upcomingRes.body)["movies"] ?? [];
+        HomeCache.upcomingNotifier.value = HomeCache.upcoming; // 🔥 FIX
         print(
           "🟢 [HOME SERVICE] Upcoming movies loaded: ${HomeCache.upcoming.length}",
         );
@@ -50,30 +61,56 @@ class HomeService {
         final body = fullRes.body.trim();
         final decoded = jsonDecode(body);
         HomeCache.full =
+            decoded["data"] ??      // ✅ api-full-movies.php uses "data" key
             decoded["movies"] ??
-            decoded["data"] ??
             (decoded is List ? decoded : []);
+        HomeCache.fullNotifier.value = HomeCache.full; // 🔥 FIX
         print("🟢 [HOME SERVICE] Full movies loaded: ${HomeCache.full.length}");
       }
 
-      // 🔥 Load remaining data in background after critical data is ready
+      if (filmsRes.statusCode == 200 && filmsRes.body.trim().startsWith("{")) {
+        final decoded = jsonDecode(filmsRes.body);
+        final films = (decoded["movies"] ?? []) as List;
+        HomeCache.films = films;
+        _precomputeSearchFields(HomeCache.films); // 🔥 do this ONCE, not per keystroke
+        print("🟢 [HOME SERVICE] Films loaded for search: ${HomeCache.films.length}");
+      }
+
+      // 🔥 Load remaining data in background after critical data is ready.
+      // ⚠️ FIX: dubbed, ott, movies ab ek saath Future.wait() me nahi baandhe —
+      // pehle sab ek group me the, isliye dubbed (jo fast hai) bhi slow OTT/movies
+      // ke complete hone tak UI me nahi dikhta tha. Ab har ek apna independent
+      // path leta hai, jo jaldi khatam ho wo turant notifier update kar deta hai.
       Future.microtask(() async {
         try {
-          final backgroundResults = await Future.wait([
-            OttService.fetchOtt(),
-            MovieService.fetchMovies(),
-            DubbedService.fetchDubbedMovies(),
-          ]);
+          // 🔥 Dubbed fires on its own — updates UI the moment ITS OWN
+          // API responds, without waiting on ott/movies.
+          DubbedService.fetchDubbedMovies().then((dubbed) {
+            HomeCache.dubbed = dubbed;
+            HomeCache.dubbedNotifier.value = dubbed;
+            print("🟢 [HOME SERVICE] Dubbed loaded fast: ${dubbed.length}");
+          }).catchError((e) {
+            print("🔴 [HOME SERVICE] Dubbed loading error: $e");
+          });
 
-          HomeCache.ott = backgroundResults[0];
-          HomeCache.movies = backgroundResults[1];
-          HomeCache.dubbed = backgroundResults[2];
-          HomeCache.dubbedNotifier.value = backgroundResults[2];
+          OttService.fetchOtt().then((ott) {
+            HomeCache.ott = ott;
+            print("🟢 [HOME SERVICE] Ott loaded: ${ott.length}");
+          }).catchError((e) {
+            print("🔴 [HOME SERVICE] Ott loading error: $e");
+          });
+
+          MovieService.fetchMovies().then((movies) {
+            HomeCache.movies = movies;
+            print("🟢 [HOME SERVICE] Movies loaded: ${movies.length}");
+          }).catchError((e) {
+            print("🔴 [HOME SERVICE] Movies loading error: $e");
+          });
 
           // 🔥 Load extra APIs (including films) in background
           _loadExtraData();
 
-          print("🟢 [HOME SERVICE] Background data loaded");
+          print("🟢 [HOME SERVICE] Background data dispatched");
         } catch (e) {
           print("🔴 [HOME SERVICE] Background loading error: $e");
         }
@@ -97,7 +134,8 @@ class HomeService {
         http.get(Uri.parse("https://hindi.bollywoodproduct.com/api-trailers.php")),
         http.get(Uri.parse("https://www.bollywoodproduct.com/api-latest-trailers.php")),
         http.get(Uri.parse("https://www.bollywoodproduct.com/api-most-viewed-trailers.php")),
-        http.get(Uri.parse("https://www.bollywoodproduct.com/api-films.php")), // ✅ NEW
+        // ❌ api-films.php removed from here — now loaded earlier in criticalResults
+        // so search suggestions are ready as soon as splash screen finishes.
       ]);
 
       _parseList(results[0], ["films"], HomeCache.ottLatest);
@@ -105,17 +143,28 @@ class HomeService {
       _parseList(results[2], ["trailers"], HomeCache.trailers);
       _parseList(results[3], ["trailers"], HomeCache.latestTrailers);
       _parseList(results[4], ["trailers"], HomeCache.mostViewedTrailers);
-      _parseList(results[5], ["movies"], HomeCache.films); // ✅ NEW
 
       print(
         "🟢 [HOME SERVICE] Extra data loaded: "
         "ottLatest=${HomeCache.ottLatest.length}, "
         "ottUpcoming=${HomeCache.ottUpcoming.length}, "
-        "trailers=${HomeCache.trailers.length}, "
-        "films=${HomeCache.films.length}",
+        "trailers=${HomeCache.trailers.length}",
       );
     } catch (e) {
       print("🔴 [HOME SERVICE] Extra data error: $e");
+    }
+  }
+
+  /// 🔥 Precompute lowercase title/language ONCE when films are loaded,
+  /// instead of every keystroke in search screen. Big perf win for 9687 items.
+  static void _precomputeSearchFields(List films) {
+    for (final m in films) {
+      if (m is Map) {
+        final title = (m["name"] ?? m["film_name"] ?? m["title"] ?? "").toString();
+        final lang = (m["main_lang"] ?? m["film_lang"] ?? m["language"] ?? "").toString();
+        m['_title_lower'] = title.toLowerCase().trim();
+        m['_lang_lower'] = lang.toLowerCase().trim();
+      }
     }
   }
 

@@ -3,7 +3,7 @@ import '../services/movie_service.dart';
 import '../utils/paginated_list.dart';
 import '../utils/data_adapter.dart';
 import '../widgets/movie_list_tile.dart';
-import 'common_detail_screen.dart';
+import 'common.dart';
 
 class FullMoviesPage extends StatefulWidget {
   const FullMoviesPage({super.key});
@@ -13,15 +13,10 @@ class FullMoviesPage extends StatefulWidget {
 }
 
 class _FullMoviesPageState extends State<FullMoviesPage> {
-  final List _allFullMovies = [];
-
   Future<List> fetch() async {
-    // ✅ Only fetch from api-full-movies.php
-    final fullMoviesData = await MovieService.fetchFull();
-    print(
-      "=== [FULL MOVIES] Fetched from api-full-movies.php: ${fullMoviesData.length} items",
-    );
-    return fullMoviesData;
+    final data = await MovieService.fetchFull();
+    print("=== [FULL MOVIES] Fetched: ${data.length} items");
+    return data;
   }
 
   @override
@@ -36,29 +31,31 @@ class _FullMoviesPageState extends State<FullMoviesPage> {
         pageSize: 15,
         fetch: fetch,
         builder: (m) {
-          if (!_allFullMovies.contains(m)) {
-            _allFullMovies.add(m);
-          }
+          final uniqueId = DataAdapter.extractUniqueIdFromWatchUrl(m) ?? "";
 
           return MovieListTile(
-            id: m["film_id"]?.toString() ?? m["unique_id"]?.toString() ?? "",
+            id: m["film_id"]?.toString() ?? uniqueId,
             title: DataAdapter.extractTitle(m),
             language: DataAdapter.extractLanguage(m),
             categorySlug: DataAdapter.extractCategorySlug(m),
             posterOverride: DataAdapter.extractPoster(m),
             onTap: () {
-  print("=== [EXPLORE FULL] Total=${_allFullMovies.length}");
-
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => CommonDetailScreen(
-        data: m,
-        exploreList: _allFullMovies,
-      ),
-    ),
-  );
-},
+              if (uniqueId.isEmpty) {
+                print("🔴 [FULL MOVIE TAP] unique_id empty, film=${m["film_name"]}");
+                return;
+              }
+              print("🟢 [FULL MOVIE TAP] navigating unique_id=$uniqueId");
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CommonScreen(
+                    uniqueId: uniqueId,
+                    posterUrl: DataAdapter.extractPoster(m),
+                    language: DataAdapter.extractLanguage(m),
+                  ),
+                ),
+              );
+            },
           );
         },
       ),

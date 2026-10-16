@@ -5,6 +5,7 @@ import '../widgets/app_drawer.dart';
 import '../widgets/movie_tile.dart';
 import '../utils/data_adapter.dart';
 import '../utils/home_cache.dart';
+import '../services/movie_service.dart';
 // import '../widgets/notification_sheet.dart';
 import 'ott_movies_page.dart';
 import 'movie_detail_page.dart';
@@ -14,7 +15,7 @@ import 'full_movies_page.dart';
 import 'ott_detail_page.dart';
 import 'search_screen.dart';
 import 'dubbed_movies_page.dart';
-import 'common_detail_screen.dart';
+import 'common.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -202,15 +203,23 @@ class _HomePageState extends State<HomePage> {
           padding: EdgeInsets.zero,
           physics: const BouncingScrollPhysics(),
           children: [
-            section(
-              context,
-              key: "full",
-              title: "Full Movies",
-              list: HomeCache.full,
-              onSeeAll: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const FullMoviesPage()),
-              ),
+            // 🔥 FIX: ValueListenableBuilder add kiya — pehle ye seedha
+            // HomeCache.full read karta tha, agar build data se pehle ho
+            // jata to ye section kabhi refresh nahi hota tha.
+            ValueListenableBuilder<List>(
+              valueListenable: HomeCache.fullNotifier,
+              builder: (context, fullList, child) {
+                return section(
+                  context,
+                  key: "full",
+                  title: "Full Movies",
+                  list: fullList.isNotEmpty ? fullList : HomeCache.full,
+                  onSeeAll: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const FullMoviesPage()),
+                  ),
+                );
+              },
             ),
             // REPLACE dubbed section with:
             ValueListenableBuilder<List>(
@@ -228,25 +237,37 @@ class _HomePageState extends State<HomePage> {
                 );
               },
             ),
-            section(
-              context,
-              key: "upcoming",
-              title: "Upcoming Movies",
-              list: HomeCache.upcoming,
-              onSeeAll: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const UpcomingMoviesPage()),
-              ),
+            // 🔥 FIX: same problem yahan bhi tha — ab notifier se refresh hoga
+            ValueListenableBuilder<List>(
+              valueListenable: HomeCache.upcomingNotifier,
+              builder: (context, upcomingList, child) {
+                return section(
+                  context,
+                  key: "upcoming",
+                  title: "Upcoming Movies",
+                  list: upcomingList.isNotEmpty ? upcomingList : HomeCache.upcoming,
+                  onSeeAll: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const UpcomingMoviesPage()),
+                  ),
+                );
+              },
             ),
-            section(
-              context,
-              key: "latest",
-              title: "Latest Movies in Theater",
-              list: HomeCache.latest,
-              onSeeAll: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AllMoviesPage()),
-              ),
+            // 🔥 FIX: same problem yahan bhi tha — ab notifier se refresh hoga
+            ValueListenableBuilder<List>(
+              valueListenable: HomeCache.latestNotifier,
+              builder: (context, latestList, child) {
+                return section(
+                  context,
+                  key: "latest",
+                  title: "Latest Movies in Theater",
+                  list: latestList.isNotEmpty ? latestList : HomeCache.latest,
+                  onSeeAll: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AllMoviesPage()),
+                  ),
+                );
+              },
             ),
 
             /// 🔥 OTT SECTION with ValueListenableBuilder for auto-refresh
@@ -438,11 +459,15 @@ class _HomePageState extends State<HomePage> {
                   final m = items[i];
                   final isOtt = key == "ott";
                   final isDubbed = key == "dubbed";
+                  final isUpcoming = key == "upcoming";
+                  final isLatest = key == "latest";
 
                   final safeId = isOtt
                       ? resolveOttId(m)
                       : isDubbed
                       ? _extractDubbedId(m)
+                      : (isUpcoming || isLatest)
+                      ? (m["film_unique_id"]?.toString() ?? "")
                       : (m["film_id"]?.toString() ??
                             m["unique_id"]?.toString() ??
                             "");
@@ -455,80 +480,128 @@ class _HomePageState extends State<HomePage> {
                       id: safeId,
                       title: DataAdapter.extractTitle(m),
                       year: isDubbed
-                          ? DataAdapter.extractDubbedLanguage(m)
+                          ? "in ${DataAdapter.extractDubbedLanguage(m)}"
                           : (isOtt
-                                ? DataAdapter.extractLanguage(m)
-                                : (key == "upcoming" || key == "latest")
-                                ? DataAdapter.extractLanguage(m)
+                                ? "in ${DataAdapter.extractLanguage(m)}"
+                                : isUpcoming
+                                ? "in ${DataAdapter.extractTrailerLanguage(m)}"
+                                : key == "latest"
+                                ? "in ${DataAdapter.extractTrailerLanguage(m)}"
                                 : "${DataAdapter.extractCategorySlug(m)} in ${DataAdapter.extractLanguage(m)}"),
                       onTap: () {
-                        if (isOtt) {
+                        if (key == "full") {
+                          final uniqueId =
+                              DataAdapter.extractUniqueIdFromWatchUrl(m) ?? "";
+                          if (uniqueId.isEmpty) {
+                            print("🔴 [HOME TAP] full unique_id empty, film=${m['film_name']}");
+                            return;
+                          }
+                          print("🟢 [HOME TAP] full → unique_id=$uniqueId");
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => CommonDetailScreen(
-                                data: DataAdapter.normalizeOtt(m),
-                                exploreList: HomeCache.ott
-                                    .map((e) => DataAdapter.normalizeOtt(e))
-                                    .toList(),
-                                isOtt: true,
-                              ),
-                            ),
-                          );
-                        } else if (key == "full") {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => CommonDetailScreen(
-                                data: m,
+                              builder: (_) => CommonScreen(
+                                uniqueId: uniqueId,
+                                posterUrl: DataAdapter.extractPoster(m),
+                                language: DataAdapter.extractLanguage(m),
                                 exploreList: HomeCache.full,
                               ),
                             ),
                           );
-                        } else if (isDubbed) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => CommonDetailScreen(
-                                data: DataAdapter.normalizeDubbed(m),
-                                exploreList: HomeCache.dubbed
-                                    .map((e) => DataAdapter.normalizeDubbed(e))
-                                    .toList(),
-                                isDubbed: true,
-                              ),
-                            ),
-                          );
-                        } else if (key == "upcoming") {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => CommonDetailScreen(
-                                data: m,
-                                exploreList: items,
-                                isUpcoming: true,
-                              ),
-                            ),
-                          );
-                        } else if (key == "latest") {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => CommonDetailScreen(
-                                data: m,
-                                exploreList: items,
-                                isLatest: true,
-                              ),
-                            ),
-                          );
-                        } else {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  MovieDetailPage(data: m, exploreList: items),
-                            ),
-                          );
+                          return;
                         }
+                        if (key == "dubbed") {
+                          final direct = m["film_unique_id"]?.toString().trim() ?? "";
+                          final uniqueId = direct.isNotEmpty
+                              ? direct
+                              : (DataAdapter.extractUniqueIdFromFilmUrl(m) ?? "");
+                          if (uniqueId.isEmpty) {
+                            print("🔴 [HOME TAP] dubbed unique_id empty, film=${m['dubbed_film_name']}");
+                            return;
+                          }
+                          print("🟢 [HOME TAP] dubbed → unique_id=$uniqueId");
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CommonScreen(
+                                uniqueId: uniqueId,
+                                posterUrl: DataAdapter.extractPoster(m),
+                                language: DataAdapter.extractDubbedLanguage(m),
+                                onlyFullTrailers: false,
+                                isDubbed: true,
+                                exploreList: HomeCache.dubbed,
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        if (key == "upcoming") {
+                          final uniqueId = m["film_unique_id"]?.toString().trim() ?? "";
+                          if (uniqueId.isEmpty) {
+                            print("🔴 [HOME TAP] upcoming unique_id empty, film=${m['film_name']}");
+                            return;
+                          }
+                          print("🟢 [HOME TAP] upcoming → unique_id=$uniqueId");
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CommonScreen(
+                                uniqueId: uniqueId,
+                                posterUrl: DataAdapter.extractPoster(m),
+                                language: DataAdapter.extractTrailerLanguage(m),
+                                onlyFullTrailers: false,
+                                exploreList: HomeCache.upcoming,
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        if (key == "latest") {
+                          final uniqueId = m["film_unique_id"]?.toString().trim() ?? "";
+                          if (uniqueId.isEmpty) {
+                            print("🔴 [HOME TAP] latest unique_id empty, film=${m['film_name']}");
+                            return;
+                          }
+                          print("🟢 [HOME TAP] latest → unique_id=$uniqueId");
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CommonScreen(
+                                uniqueId: uniqueId,
+                                posterUrl: DataAdapter.extractPoster(m),
+                                language: DataAdapter.extractTrailerLanguage(m),
+                                onlyFullTrailers: false,
+                                exploreList: HomeCache.latest,
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        if (key == "ott") {
+                          final direct = m["film_unique_id"]?.toString().trim() ?? "";
+                          final uniqueId = direct.isNotEmpty ? direct : resolveOttId(m);
+                          if (uniqueId.isEmpty) {
+                            print("🔴 [HOME TAP] ott unique_id empty, film=${m['name']}");
+                            return;
+                          }
+                          print("🟢 [HOME TAP] ott → unique_id=$uniqueId");
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CommonScreen(
+                                uniqueId: uniqueId,
+                                posterUrl: DataAdapter.extractPoster(m),
+                                language: DataAdapter.extractLanguage(m),
+                                onlyFullTrailers: false,
+                                ottPlatform: m["ott_platform"]?.toString(),
+                                ottLink: m["ott_link"]?.toString(),
+                                exploreList: HomeCache.ott,
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        print("=== [HOME TAP] disabled for now, key=$key film=${m['film_name']}");
                       },
                       posterOverride: DataAdapter.extractPoster(m),
                     ),
