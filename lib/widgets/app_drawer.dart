@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:bollywood/screens/terms_view.dart';
 import 'package:bollywood/screens/privacy_view.dart';
-import 'package:bollywood/screens/bollywood_quiz_screen.dart';
+import 'package:bollywood/screens/quiz/bollywood_quiz_screen.dart';
 // import 'package:bollywood/screens/account_page.dart'; // Temporarily hidden
 
 class AppDrawer extends StatelessWidget {
