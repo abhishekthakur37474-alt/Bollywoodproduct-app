@@ -86,14 +86,14 @@ class _QuizHomeScreenState extends State<QuizHomeScreen> {
       return;
     }
 
-    // Abhi sirf topic id=1 (Guess the Singer) ka quiz bana hai
-    if (t.id != 1) {
+    // Jis topic ki API bani hai wahi khulega
+    if (!QuizService.hasApi(t.id)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: Color(0xff1A1A1A),
           behavior: SnackBarBehavior.floating,
           content: Text(
-            'Ye topic jald aa raha hai. Abhi "Guess the Singer" khelo.',
+            'Ye topic jald aa raha hai. Koi aur topic chuno.',
             style: TextStyle(color: Color(0xffD4AF37)),
           ),
         ),

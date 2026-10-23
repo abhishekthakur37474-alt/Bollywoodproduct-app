@@ -22,7 +22,7 @@ class QuizOptions {
 }
 
 // ---------------- questions ----------------
-/// Question text ka ek tukda (web me <strong style="color:..">)
+/// Question text ka ek tukda (web me <strong>/<span style="color:..">)
 class QuestionSegment {
   final String text;
   final String? colorHex; // "#RRGGBB" ya null
@@ -34,7 +34,7 @@ class QuizQuestion {
   final int id;
   final List<QuestionSegment> segments;
   final List<String> options; // 4 options
-  final String videoId; // YouTube id
+  final String videoId; // YouTube id (khali ho sakta hai, jaise topic 11)
   const QuizQuestion(this.id, this.segments, this.options, this.videoId);
 }
 
@@ -48,11 +48,24 @@ class QuizService {
   static const _base = 'https://www.bollywoodproduct.com/quiz';
   static const _optionsUrl = '$_base/quiz-options-api.php';
 
-  /// Har topic ki apni API file (topic name ke naam pe).
+  /// Har topic ki apni API file (topic id -> file name).
   /// Naya topic banao to yaha ek line add karo.
+  /// NOTE: id=4 ki API abhi nahi bani, isliye wo topic "coming soon" dikhega.
   static const _playApiFile = {
     1: 'guess-the-singer-api.php', // Guess the Singer
+    2: 'song-music-director-api.php', // Song (Music Director)
+    3: 'song-lyricist-api.php', // Song (Lyricist)
+    5: 'director-of-upcoming-film-api.php', // Director of Upcoming Film
+    6: 'film-director-api.php', // Film Director
+    7: 'film-producer-api.php', // Film Producer
+    8: 'producer-of-upcoming-film-api.php', // Upcoming Film Producers
+    9: 'production-house-of-upcoming-film-api.php', // Upcoming Films of Production House
+    10: 'production-house-of-film-api.php', // Film Production House
+    11: 'find-actor-of-film-api.php', // Find Actor of Film
   };
+
+  /// Is topic ki API bani hai ya nahi.
+  static bool hasApi(int topicId) => _playApiFile.containsKey(topicId);
 
   static String _playUrl(int topicId) {
     final file = _playApiFile[topicId];
@@ -122,7 +135,7 @@ class QuizService {
       int.parse(q['id'].toString()),
       segments,
       options,
-      q['video_id'].toString(),
+      (q['video_id'] ?? '').toString(),
     );
   }
 
