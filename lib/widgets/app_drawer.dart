@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:bollywood/screens/terms_view.dart';
 import 'package:bollywood/screens/privacy_view.dart';
+import 'package:bollywood/screens/bollywood_quiz_screen.dart';
 // import 'package:bollywood/screens/account_page.dart'; // Temporarily hidden
 
 class AppDrawer extends StatelessWidget {
@@ -47,6 +49,46 @@ class AppDrawer extends StatelessWidget {
 
             //   },
             // ),
+
+            /// 🎯 BOLLYWOOD QUIZ
+            ListTile(
+              leading: const HugeIcon(
+                icon: HugeIcons.strokeRoundedBrain01,
+                size: 24.0,
+                color: Color(0xffD4AF37),
+                strokeWidth: 1.5,
+              ),
+              title: const Text(
+                "Bollywood Quiz",
+                style: TextStyle(
+                  color: Color(0xffD4AF37),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              trailing: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xffD4AF37).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xffD4AF37), width: 0.8),
+                ),
+                child: const Text(
+                  "Coming Soon",
+                  style: TextStyle(
+                    color: Color(0xffD4AF37),
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const BollywoodQuizScreen()),
+                );
+              },
+            ),
 
             /// TERMS
             ListTile(

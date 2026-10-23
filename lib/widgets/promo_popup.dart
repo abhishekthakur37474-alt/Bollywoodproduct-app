@@ -14,6 +14,8 @@ const Set<String> _excludedScreens = {
   'BottomNav',
 };
 
+const Set<String> _promoHiddenScreens = {'BollywoodQuizScreen'};
+
 /// Notifies [PromoBubbleLayer] whenever the bubble needs to be shown or
 /// hidden.
 final ValueNotifier<int> promoBubbleTick = ValueNotifier<int>(0);
@@ -33,6 +35,7 @@ class PromoPopupManager {
   static String? _pendingKey;
   static bool _isVisible = false;
   static bool _dismissedOnce = false;
+  static bool _isHiddenOnCurrentScreen = false;
 
   /// Key of the bottom nav tab that is currently selected.
   static String? currentTabKey;
@@ -41,7 +44,21 @@ class PromoPopupManager {
 
   /// The small floating bubble is shown after the user closes the popup for
   /// the first time and stays for the rest of the app session.
-  static bool get showBubble => _dismissedOnce && !_isVisible;
+  static bool get showBubble =>
+      _dismissedOnce && !_isVisible && !_isHiddenOnCurrentScreen;
+
+  static void setHiddenOnCurrentScreen(bool hidden) {
+    if (_isHiddenOnCurrentScreen == hidden) return;
+    _isHiddenOnCurrentScreen = hidden;
+
+    if (hidden) {
+      _timer?.cancel();
+      _timer = null;
+      _pendingKey = null;
+    }
+
+    promoBubbleTick.value++;
+  }
 
   static void schedule(String screenKey) {
     if (_isVisible || _handledScreens.contains(screenKey)) return;
@@ -227,6 +244,9 @@ class PromoPopupRouteObserver extends NavigatorObserver {
   void _handleRoute(Route<dynamic> route) {
     final screenKey = _screenKey(route);
     if (screenKey == null) return;
+    final hidePromo = _promoHiddenScreens.contains(screenKey);
+    PromoPopupManager.setHiddenOnCurrentScreen(hidePromo);
+    if (hidePromo) return;
     if (_excludedScreens.contains(screenKey)) return;
 
     PromoPopupManager.schedule(screenKey);
