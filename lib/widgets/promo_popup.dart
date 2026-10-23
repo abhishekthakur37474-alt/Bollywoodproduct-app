@@ -14,7 +14,14 @@ const Set<String> _excludedScreens = {
   'BottomNav',
 };
 
-const Set<String> _promoHiddenScreens = {'BollywoodQuizScreen'};
+const Set<String> _promoHiddenScreens = {
+  'BollywoodQuizScreen',
+  'QuizPlayScreen',
+  'QuizHomeScreen',
+  'QuizScoreScreen',
+  'QuizLeaderboardScreen',
+  'QuizProfileScreen',
+};
 
 /// Notifies [PromoBubbleLayer] whenever the bubble needs to be shown or
 /// hidden.
@@ -232,13 +239,14 @@ class PromoPopupRouteObserver extends NavigatorObserver {
 
     if (previousRoute == null) return;
 
-    // Returning to the bottom nav: make sure the active tab still gets its
-    // popup if it was skipped (for example when the user opened a detail
-    // page within the 2 second delay).
     if (_screenKey(previousRoute) == 'BottomNav') {
+      PromoPopupManager.setHiddenOnCurrentScreen(false);
       final tabKey = PromoPopupManager.currentTabKey;
       if (tabKey != null) PromoPopupManager.schedule(tabKey);
+      return;
     }
+
+    _handleRoute(previousRoute);
   }
 
   void _handleRoute(Route<dynamic> route) {
