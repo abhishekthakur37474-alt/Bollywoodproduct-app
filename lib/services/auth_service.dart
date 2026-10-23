@@ -2,20 +2,21 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
+  static const _webClientId =
+      '1031037529929-ob7gmjugokl2q32mv45f5fh2b3va0lpo.apps.googleusercontent.com';
+
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email'],
+    scopes: const ['email', 'profile'],
+    serverClientId: _webClientId,
   );
 
-  /// 🔐 GOOGLE LOGIN
   static Future<User?> signInWithGoogle() async {
     try {
       print("🟡 [AUTH] Google sign-in started");
 
-      // 🔥 FORCE ACCOUNT PICKER EVERY TIME
-      await _googleSignIn.signOut();
-
-      final GoogleSignInAccount? googleUser =
-      await _googleSignIn.signIn();
+      GoogleSignInAccount? googleUser = _googleSignIn.currentUser;
+      googleUser ??= await _googleSignIn.signInSilently();
+      googleUser ??= await _googleSignIn.signIn();
 
       if (googleUser == null) {
         print("🔴 [AUTH] User cancelled login");
@@ -25,26 +26,45 @@ class AuthService {
       print("🟡 [AUTH] Selected account: ${googleUser.email}");
 
       final GoogleSignInAuthentication googleAuth =
-      await googleUser.authentication;
+          await googleUser.authentication;
 
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
+      if (googleAuth.idToken == null) {
+        print("🔴 [AUTH] Missing idToken, retrying sign-in");
+        await _googleSignIn.signOut();
+        googleUser = await _googleSignIn.signIn();
+        if (googleUser == null) return null;
+        final retryAuth = await googleUser.authentication;
+        if (retryAuth.idToken == null) {
+          throw FirebaseAuthException(
+            code: 'missing-id-token',
+            message: 'Google sign-in failed. Please try again.',
+          );
+        }
+        return _signInToFirebase(retryAuth);
+      }
 
-      final userCredential =
-      await FirebaseAuth.instance.signInWithCredential(credential);
-
-      print("🟢 [AUTH] Firebase login success: ${userCredential.user?.uid}");
-
-      return userCredential.user;
+      return _signInToFirebase(googleAuth);
     } catch (e) {
       print("🔴 [AUTH ERROR] $e");
-      return null;
+      rethrow;
     }
   }
 
-  /// 🚪 LOGOUT
+  static Future<User?> _signInToFirebase(
+    GoogleSignInAuthentication googleAuth,
+  ) async {
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    final userCredential =
+        await FirebaseAuth.instance.signInWithCredential(credential);
+
+    print("🟢 [AUTH] Firebase login success: ${userCredential.user?.uid}");
+    return userCredential.user;
+  }
+
   static Future<void> signOut() async {
     print("🟡 [AUTH] Logging out");
 

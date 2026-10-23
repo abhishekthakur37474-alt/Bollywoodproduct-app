@@ -12,6 +12,7 @@ const Set<String> _excludedScreens = {
   'SplashScreen',
   'HomeLoaderScreen',
   'BottomNav',
+  'LoginScreen',
 };
 
 const Set<String> _promoHiddenScreens = {
@@ -21,6 +22,7 @@ const Set<String> _promoHiddenScreens = {
   'QuizScoreScreen',
   'QuizLeaderboardScreen',
   'QuizProfileScreen',
+  'LoginScreen',
 };
 
 /// Notifies [PromoBubbleLayer] whenever the bubble needs to be shown or

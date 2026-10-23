@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import 'splash_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,6 +10,42 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   bool acceptedPolicy = false;
+  bool loading = false;
+
+  Future<void> _login() async {
+    if (loading) return;
+
+    if (!acceptedPolicy) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please accept Privacy Policy"),
+        ),
+      );
+      return;
+    }
+
+    setState(() => loading = true);
+
+    try {
+      final user = await AuthService.signInWithGoogle();
+      if (!mounted) return;
+
+      if (user == null) {
+        setState(() => loading = false);
+        return;
+      }
+
+      Navigator.pop(context);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Login failed. Please try again."),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,20 +53,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xff0F0F0F),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: Colors.white,
+      ),
       body: Padding(
         padding: EdgeInsets.symmetric(horizontal: size.width * 0.08),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            /// 🔰 LOGO
             Image.asset(
               "assets/images/logo.jpeg",
               width: size.width * 0.32,
             ),
-
             const SizedBox(height: 28),
-
-            /// 🏆 TITLE
             const Text(
               "Welcome to Bollywood Product",
               textAlign: TextAlign.center,
@@ -41,19 +77,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 color: Colors.white,
               ),
             ),
-
             const SizedBox(height: 12),
-
             const Text(
               "Sign in to continue",
               style: TextStyle(
                 color: Colors.white70,
               ),
             ),
-
             const SizedBox(height: 40),
-
-            /// 🔐 GOOGLE LOGIN BUTTON
             SizedBox(
               width: double.infinity,
               height: 52,
@@ -65,52 +96,39 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                onPressed: () async {
-                  if (!acceptedPolicy) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Please accept Privacy Policy"),
+                onPressed: loading ? null : _login,
+                child: loading
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          color: Colors.black,
+                        ),
+                      )
+                    : const Text(
+                        "Continue with Google",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    );
-                    return;
-                  }
-
-                  final user = await AuthService.signInWithGoogle();
-                  if (user == null) return;
-
-                  if (!context.mounted) return;
-
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const SplashScreen(),
-                    ),
-                  );
-                },
-                child: const Text(
-                  "Continue with Google",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
               ),
             ),
-
             const SizedBox(height: 12),
-
-            /// ✅ PRIVACY POLICY ACCEPT
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Checkbox(
                   value: acceptedPolicy,
                   activeColor: const Color(0xffD4AF37),
-                  onChanged: (v) {
-                    setState(() {
-                      acceptedPolicy = v ?? false;
-                    });
-                  },
+                  onChanged: loading
+                      ? null
+                      : (v) {
+                          setState(() {
+                            acceptedPolicy = v ?? false;
+                          });
+                        },
                 ),
                 Expanded(
                   child: GestureDetector(
@@ -135,7 +153,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  /// ✅ PRIVACY POLICY MODAL
   void _showPrivacyPolicy(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -164,15 +181,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   SizedBox(height: 14),
                   Text(
                     "Bollywood Product respects user privacy and is committed to protecting personal information.\n\n"
-                        "Users may sign in using Google authentication. Basic profile details such as name and email are collected only for login and app functionality.\n\n"
-                        "No sensitive data such as passwords or payment information is collected.\n\n"
-                        "The app may collect limited technical data such as device and performance analytics.\n\n"
-                        "Collected data is used for authentication, app improvement and personalisation.\n\n"
-                        "Bollywood Product does not sell or share personal information.\n\n"
-                        "Third-party platforms such as YouTube and OTT services operate under their own policies.\n\n"
-                        "Reasonable security measures are used to protect user data.\n\n"
-                        "This policy may be updated from time to time.\n\n"
-                        "Bollywood Product is operated by BPBB Digital LLP.",
+                    "Users may sign in using Google authentication. Basic profile details such as name and email are collected only for login and app functionality.\n\n"
+                    "No sensitive data such as passwords or payment information is collected.\n\n"
+                    "The app may collect limited technical data such as device and performance analytics.\n\n"
+                    "Collected data is used for authentication, app improvement and personalisation.\n\n"
+                    "Bollywood Product does not sell or share personal information.\n\n"
+                    "Third-party platforms such as YouTube and OTT services operate under their own policies.\n\n"
+                    "Reasonable security measures are used to protect user data.\n\n"
+                    "This policy may be updated from time to time.\n\n"
+                    "Bollywood Product is operated by BPBB Digital LLP.",
                     style: TextStyle(
                       color: Colors.white70,
                       height: 1.5,
