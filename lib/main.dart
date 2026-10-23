@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/splash_screen.dart';
 import 'services/fcm_service.dart';
+import 'widgets/promo_popup.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +25,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      navigatorKey: appNavigatorKey,
+      navigatorObservers: [PromoPopupRouteObserver()],
+      builder: (context, child) =>
+          PromoBubbleLayer(child: child ?? const SizedBox.shrink()),
       title: "Bollywood Product",
       theme: ThemeData(
         useMaterial3: true,

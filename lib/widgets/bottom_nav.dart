@@ -16,18 +16,20 @@ class BottomNav extends StatefulWidget {
 
 class _BottomNavState extends State<BottomNav> {
   int index = 0;
-  bool _promoShown = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _showPromoPopup());
+    PromoPopupManager.currentTabKey = _tabKey(index);
+    PromoPopupManager.schedule(_tabKey(index));
   }
 
-  void _showPromoPopup() {
-    if (_promoShown || !mounted) return;
-    _promoShown = true;
-    PromoPopup.show(context);
+  String _tabKey(int i) => "tab_$i";
+
+  void _onDestinationSelected(int i) {
+    setState(() => index = i);
+    PromoPopupManager.currentTabKey = _tabKey(i);
+    PromoPopupManager.schedule(_tabKey(i));
   }
 
   final pages = const [
@@ -48,7 +50,7 @@ class _BottomNavState extends State<BottomNav> {
         selectedIndex: index,
         backgroundColor: const Color(0xff0F0F0F),
         indicatorColor: const Color(0xffD4AF37).withOpacity(0.18),
-        onDestinationSelected: (i) => setState(() => index = i),
+        onDestinationSelected: _onDestinationSelected,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), label: "Home"),
           NavigationDestination(icon: Icon(Icons.tv_outlined), label: "OTT"),
