@@ -38,17 +38,17 @@ class _BollywoodQuizScreenState extends State<BollywoodQuizScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xff111111),
         elevation: 0,
-        titleSpacing: 0,
-        leading: Builder(
-          builder: (ctx) => IconButton(
-            icon: const HugeIcon(
-              icon: HugeIcons.strokeRoundedMenu02,
-              size: 24.0,
-              color: Colors.white,
-            ),
-            onPressed: () => Scaffold.of(ctx).openDrawer(),
-          ),
-        ),
+        titleSpacing: 16,
+        // leading: Builder(
+        //   builder: (ctx) => IconButton(
+        //     icon: const HugeIcon(
+        //       icon: HugeIcons.strokeRoundedMenu02,
+        //       size: 24.0,
+        //       color: Colors.white,
+        //     ),
+        //     onPressed: () => Scaffold.of(ctx).openDrawer(),
+        //   ),
+        // ),
         title: const Text(
           "Bollywood Quiz",
           style: TextStyle(
@@ -202,115 +202,12 @@ class _BollywoodQuizScreenState extends State<BollywoodQuizScreen> {
 }
 
 /// ─── HOME TAB ───────────────────────────────────────────────────────────────
-class _QuizHomeTab extends StatefulWidget {
+class _QuizHomeTab extends StatelessWidget {
   const _QuizHomeTab();
 
   @override
-  State<_QuizHomeTab> createState() => _QuizHomeTabState();
-}
-
-class _QuizHomeTabState extends State<_QuizHomeTab>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _pulse;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 2))
-      ..repeat(reverse: true);
-    _pulse = Tween<double>(begin: 0.88, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ScaleTransition(
-              scale: _pulse,
-              child: Container(
-                width: 130,
-                height: 130,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const RadialGradient(
-                    colors: [Color(0x33D4AF37), Color(0x00D4AF37)],
-                  ),
-                  border: Border.all(color: const Color(0xffD4AF37), width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xffD4AF37).withValues(alpha: 0.3),
-                      blurRadius: 40,
-                      spreadRadius: 4,
-                    ),
-                  ],
-                ),
-                child: const Icon(Icons.quiz_rounded, size: 60, color: Color(0xffD4AF37)),
-              ),
-            ),
-            const SizedBox(height: 36),
-            const Text(
-              "Bollywood Quiz",
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 9),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(30),
-                gradient: const LinearGradient(
-                  colors: [Color(0xffD4AF37), Color(0xffBB9F53)],
-                ),
-              ),
-              child: const Text(
-                "🎉  Coming Soon",
-                style: TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              "Test your Bollywood knowledge!\nQuizzes on movies, songs, celebrities & more are on their way.",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white54, fontSize: 14, height: 1.6),
-            ),
-            const SizedBox(height: 44),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              alignment: WrapAlignment.center,
-              children: const [
-                _Chip(icon: Icons.movie, label: "Movie Trivia"),
-                _Chip(icon: Icons.music_note, label: "Song Quiz"),
-                _Chip(icon: Icons.star, label: "Celebrity Quiz"),
-                _Chip(icon: Icons.emoji_events, label: "Leaderboard"),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+    return const SizedBox();
   }
 }
 
@@ -335,34 +232,6 @@ class _ComingSoonTab extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           const Text("Coming Soon", style: TextStyle(color: Colors.white38, fontSize: 14)),
-        ],
-      ),
-    );
-  }
-}
-
-/// ─── CHIP ────────────────────────────────────────────────────────────────────
-class _Chip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _Chip({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0x55D4AF37)),
-        color: const Color(0xff1A1A1A),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 15, color: const Color(0xffD4AF37)),
-          const SizedBox(width: 6),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
         ],
       ),
     );
