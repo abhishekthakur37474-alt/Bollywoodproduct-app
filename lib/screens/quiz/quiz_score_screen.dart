@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
+import '../../services/auth_service.dart';
+import 'quiz_result_screen.dart';
 import 'quiz_service.dart';
 
 const _gold = Color(0xffD4AF37);
@@ -25,12 +27,14 @@ class _QuizScoreScreenState extends State<QuizScoreScreen> {
     super.initState();
     // quiz save hote hi (ya login ke baad) yaha refresh
     QuizService.scoreVersion.addListener(_load);
+    AuthService.bollyUserId.addListener(_load); // login/logout pe refresh
     _load();
   }
 
   @override
   void dispose() {
     QuizService.scoreVersion.removeListener(_load);
+    AuthService.bollyUserId.removeListener(_load);
     super.dispose();
   }
 
@@ -191,7 +195,12 @@ class _QuizScoreScreenState extends State<QuizScoreScreen> {
 
   Widget _recentTile(RecentQuiz q) {
     final neg = q.points < 0;
-    return Container(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute(builder: (_) => QuizResultScreen(quiz: q)),
+      ),
+      child: Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
@@ -237,8 +246,11 @@ class _QuizScoreScreenState extends State<QuizScoreScreen> {
               fontWeight: FontWeight.w800,
             ),
           ),
+          const SizedBox(width: 6),
+          const Icon(Icons.chevron_right, color: Colors.white38),
         ],
       ),
+    ),
     );
   }
 }

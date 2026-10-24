@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../../services/auth_service.dart';
+
 // ---------------- dropdown options ----------------
 class QuizDuration {
   final int value; // seconds (web me quiz_duration)
@@ -52,11 +54,15 @@ class SavedScore {
   final int correct;
   final int wrong;
   final double totalPoints; // all-time total
-  const SavedScore(
-      this.points, this.attempted, this.correct, this.wrong, this.totalPoints);
+  final int? quizNumber; // user ka N-th quiz (history key)
+  final String? playedAt;
+  const SavedScore(this.points, this.attempted, this.correct, this.wrong,
+      this.totalPoints,
+      {this.quizNumber, this.playedAt});
 }
 
 class RecentQuiz {
+  final int? quizNumber; // user_quiz_number (history detail ke liye)
   final String topic;
   final int level;
   final int duration; // seconds
@@ -65,7 +71,45 @@ class RecentQuiz {
   final double points;
   final String playedAt;
   const RecentQuiz(this.topic, this.level, this.duration, this.attempted,
-      this.correct, this.points, this.playedAt);
+      this.correct, this.points, this.playedAt,
+      {this.quizNumber});
+}
+
+/// Ek quiz me attempt kiya hua question (history -> result screen).
+class AttemptedQuestion {
+  final int id;
+  final List<QuestionSegment> segments;
+  final List<String> options; // 4 options
+  final int selected; // user ka option 1..4
+  final int correctOption; // sahi option 1..4
+  const AttemptedQuestion(
+      this.id, this.segments, this.options, this.selected, this.correctOption);
+  bool get isCorrect => selected == correctOption;
+}
+
+class LeaderboardEntry {
+  final int? rank; // null = is period me khela nahi
+  final int userId;
+  final String name;
+  final String picture;
+  final double points;
+  final int correct;
+  final int attempted;
+  const LeaderboardEntry({
+    required this.rank,
+    required this.userId,
+    required this.name,
+    required this.picture,
+    required this.points,
+    required this.correct,
+    required this.attempted,
+  });
+}
+
+class LeaderboardData {
+  final List<LeaderboardEntry> rows;
+  final LeaderboardEntry? me;
+  const LeaderboardData(this.rows, this.me);
 }
 
 class ScoreSummary {
@@ -80,14 +124,14 @@ class ScoreSummary {
 
 class QuizService {
   /// Logged-in user ki id (bollywoodprodu `users.id`).
-  /// Login ke baad set karo: `QuizService.userId = id;`  Logout pe null.
-  /// null ho to score save/show nahi hoga.
-  static int? userId;
+  /// Ab AuthService se automatic aati hai (login pe set, logout pe null).
+  static int? get userId => AuthService.bollyUserId.value;
 
   /// Score save hone pe +1 hota hai, Score tab isse refresh hota hai.
   static final ValueNotifier<int> scoreVersion = ValueNotifier<int>(0);
 
   static const _scoreUrl = '$_base/quiz-score-api.php';
+  static const _leaderboardUrl = '$_base/quiz-leaderboard-api.php';
 
   static const _base = 'https://www.bollywoodproduct.com/quiz';
   static const _optionsUrl = '$_base/quiz-options-api.php';
@@ -234,6 +278,7 @@ class QuizService {
     if (data['status'] != 'ok') {
       throw Exception(data['message']?.toString() ?? 'Bad response');
     }
+    debugPrint('[QUIZ] save linked=${data['answers_linked']} err=${data['answers_error']}');
     scoreVersion.value++;
     return SavedScore(
       double.parse(data['points'].toString()),
@@ -241,7 +286,42 @@ class QuizService {
       int.parse(data['correct'].toString()),
       int.parse(data['wrong'].toString()),
       double.parse(data['total_points'].toString()),
+      quizNumber: int.tryParse('${data['quiz_number'] ?? ''}'),
+      playedAt: data['played_at']?.toString(),
     );
+  }
+
+  /// History quiz ke questions + attempts (server se). Khali list = detail nahi mili.
+  static Future<List<AttemptedQuestion>> fetchQuizDetail(int quizNumber) async {
+    final uid = userId;
+    if (uid == null) return [];
+    final uri = Uri.parse(_scoreUrl).replace(queryParameters: {
+      'action': 'detail',
+      'user_id': '$uid',
+      'quiz_number': '$quizNumber',
+    });
+    final data = await _getJson(uri);
+    if (data['status'] != 'ok') {
+      throw Exception(data['message']?.toString() ?? 'Bad response');
+    }
+    debugPrint('[QUIZ] detail debug=${data['debug']}');
+    return (data['questions'] as List).map((q) {
+      final segs = (q['segments'] as List)
+          .map((s) => QuestionSegment(
+                s['text'].toString(),
+                s['color']?.toString(),
+                s['bold'] == true,
+              ))
+          .toList();
+      final opts = (q['options'] as List).map((o) => o.toString()).toList();
+      return AttemptedQuestion(
+        int.parse(q['id'].toString()),
+        segs,
+        opts,
+        int.parse(q['selected'].toString()),
+        int.parse(q['correct_option'].toString()),
+      );
+    }).toList();
   }
 
   /// Score tab ke liye total + recent quizzes. null = user login nahi.
@@ -261,6 +341,7 @@ class QuizService {
               int.parse(r['correct'].toString()),
               double.parse(r['points'].toString()),
               r['played_at'].toString(),
+              quizNumber: int.tryParse('${r['quiz_number'] ?? ''}'),
             ))
         .toList();
     return ScoreSummary(
@@ -270,5 +351,43 @@ class QuizService {
       int.parse(data['quizzes'].toString()),
       recent,
     );
+  }
+
+  /// period: today | week | month | year
+  static Future<LeaderboardData> fetchLeaderboard(String period) async {
+    final uri = Uri.parse(_leaderboardUrl).replace(queryParameters: {
+      'period': period,
+      if (userId != null) 'user_id': '$userId',
+    });
+    final data = await _getJson(uri);
+    if (data['status'] != 'ok') {
+      throw Exception(data['message']?.toString() ?? 'Bad response');
+    }
+    final rows = (data['rows'] as List).map((r) {
+      return LeaderboardEntry(
+        rank: int.tryParse('${r['rank']}'),
+        userId: int.parse(r['user_id'].toString()),
+        name: r['name'].toString(),
+        picture: (r['picture'] ?? '').toString(),
+        points: double.parse(r['points'].toString()),
+        correct: int.parse(r['correct'].toString()),
+        attempted: int.parse(r['attempted'].toString()),
+      );
+    }).toList();
+
+    LeaderboardEntry? me;
+    final m = data['me'];
+    if (m is Map) {
+      me = LeaderboardEntry(
+        rank: int.tryParse('${m['rank']}'),
+        userId: userId ?? 0,
+        name: 'You',
+        picture: '',
+        points: double.parse(m['points'].toString()),
+        correct: int.parse(m['correct'].toString()),
+        attempted: int.parse(m['attempted'].toString()),
+      );
+    }
+    return LeaderboardData(rows, me);
   }
 }

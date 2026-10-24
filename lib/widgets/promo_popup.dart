@@ -22,6 +22,7 @@ const Set<String> _promoHiddenScreens = {
   'QuizScoreScreen',
   'QuizLeaderboardScreen',
   'QuizProfileScreen',
+  'QuizResultScreen',
   'LoginScreen',
 };
 

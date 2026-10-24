@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/splash_screen.dart';
+import 'services/auth_service.dart';
 import 'services/fcm_service.dart';
 import 'widgets/promo_popup.dart';
 
@@ -14,6 +15,9 @@ Future<void> main() async {
 
   // 🔥 INIT FCM AFTER Firebase
   await FcmService.init();
+
+  // 🔁 Restore previous login session if available
+  await AuthService.restoreSession();
 
   runApp(const MyApp());
 }
