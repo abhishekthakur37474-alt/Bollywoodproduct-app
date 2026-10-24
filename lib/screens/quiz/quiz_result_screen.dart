@@ -12,8 +12,8 @@ Color _hex(String? hex, Color fallback) {
   return v == null ? fallback : Color(0xFF000000 | v);
 }
 
-/// History me quiz pe tap karne par khulti hai.
-/// Header (topic, level, duration, date) + questions & attempts server se (quiz_user_answers).
+/// Opens when a quiz in history is tapped.
+/// Header (topic, level, duration, date) + questions & attempts from server (quiz_user_answers).
 class QuizResultScreen extends StatefulWidget {
   final RecentQuiz quiz;
   const QuizResultScreen({super.key, required this.quiz});
@@ -34,7 +34,7 @@ class _QuizResultScreenState extends State<QuizResultScreen> {
   Future<List<AttemptedQuestion>> _load() {
     final n = widget.quiz.quizNumber;
     if (n == null) {
-      return Future.error('quiz_number nahi aaya - server pe quiz-score-api.php purani hai');
+      return Future.error('quiz_number missing - quiz-score-api.php on the server is outdated');
     }
     return QuizService.fetchQuizDetail(n);
   }
@@ -93,7 +93,7 @@ class _QuizResultScreenState extends State<QuizResultScreen> {
               if (snap.hasError) {
                 return Column(
                   children: [
-                    _note('Questions load nahi hue.\n${snap.error}'),
+                    _note('Could not load questions.\n${snap.error}'),
                     TextButton(
                       onPressed: () => setState(() => _future = _load()),
                       child: const Text('Retry',
@@ -104,10 +104,7 @@ class _QuizResultScreenState extends State<QuizResultScreen> {
               }
               final qs = snap.data ?? const <AttemptedQuestion>[];
               if (qs.isEmpty) {
-                return _note(
-                  'Is quiz ke questions & answers available nahi hain.\n'
-                  'Ye quiz website par ya app update se pehle khela gaya tha.',
-                );
+                return _note('Data Not Available');
               }
               return Column(
                 children: [

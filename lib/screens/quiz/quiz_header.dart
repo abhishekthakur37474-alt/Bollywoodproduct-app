@@ -24,45 +24,60 @@ class QuizHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final topPad = MediaQuery.of(context).padding.top;
 
-    return CustomPaint(
-      painter: QuizInvertedCurvePainter(),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(16, topPad + 10, 8, 64),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.asset(
-                'assets/images/logo.jpeg',
-                height: 36,
-                width: 36,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  color: Color(0xff111111),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                  letterSpacing: 0.3,
+    return RepaintBoundary(
+      child: CustomPaint(
+        painter: const QuizInvertedCurvePainter(),
+        isComplex: true,
+        willChange: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(16, topPad + 10, 8, 64),
+          child: SizedBox(
+            height: 48,
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset(
+                    'assets/images/logo.jpeg',
+                    height: 36,
+                    width: 36,
+                    fit: BoxFit.cover,
+                  ),
                 ),
-              ),
-            ),
-            if (showExit)
-              IconButton(
-                onPressed: () => _exitToMain(context),
-                tooltip: 'Exit',
-                icon: const HugeIcon(
-                  icon: HugeIcons.strokeRoundedLogout02,
-                  size: 22.0,
-                  color: Colors.redAccent,
-                  strokeWidth: 1.5,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xff111111),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
                 ),
-              ),
-          ],
+                SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: showExit
+                      ? IconButton(
+                          onPressed: () => _exitToMain(context),
+                          tooltip: 'Exit',
+                          padding: EdgeInsets.zero,
+                          icon: const HugeIcon(
+                            icon: HugeIcons.strokeRoundedLogout02,
+                            size: 22.0,
+                            color: Colors.redAccent,
+                            strokeWidth: 1.5,
+                          ),
+                        )
+                      : null,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -70,6 +85,8 @@ class QuizHeader extends StatelessWidget {
 }
 
 class QuizInvertedCurvePainter extends CustomPainter {
+  const QuizInvertedCurvePainter();
+
   @override
   void paint(Canvas canvas, Size size) {
     const curveDepth = 56.0;

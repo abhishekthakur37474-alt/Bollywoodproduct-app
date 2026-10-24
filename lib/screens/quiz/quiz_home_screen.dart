@@ -20,7 +20,7 @@ class _QuizHomeScreenState extends State<QuizHomeScreen> {
   bool _loading = true;
   String? _error;
 
-  // selected values (web ke defaults jaise: 120 sec, level 1)
+  // selected values (same defaults as web: 120 sec, level 1)
   int? _duration;
   int? _topicId;
   int? _level;
@@ -51,7 +51,7 @@ class _QuizHomeScreenState extends State<QuizHomeScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Quiz options load nahi hue. Internet check karo.';
+        _error = 'Could not load quiz options. Please check your internet.';
         _loading = false;
       });
     }
@@ -70,7 +70,7 @@ class _QuizHomeScreenState extends State<QuizHomeScreen> {
     final t = _options!.topics.firstWhere((t) => t.id == id);
     setState(() {
       _topicId = id;
-      // web jaisa: purana level available ho to rakho, warna pehla level
+      // same as web: keep previous level if available, otherwise first level
       if (_level == null || !t.levels.contains(_level)) {
         _level = t.levels.first;
       }
@@ -81,19 +81,19 @@ class _QuizHomeScreenState extends State<QuizHomeScreen> {
     final t = _topic;
     if (t == null || _level == null || _duration == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pehle duration, level aur topic chuno.')),
+        const SnackBar(content: Text('Please select duration, level and topic first.')),
       );
       return;
     }
 
-    // Jis topic ki API bani hai wahi khulega
+    // Only open topics that have an API
     if (!QuizService.hasApi(t.id)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: Color(0xff1A1A1A),
           behavior: SnackBarBehavior.floating,
           content: Text(
-            'Ye topic jald aa raha hai. Koi aur topic chuno.',
+            'This topic is coming soon. Please choose another topic.',
             style: TextStyle(color: Color(0xffD4AF37)),
           ),
         ),
@@ -101,7 +101,7 @@ class _QuizHomeScreenState extends State<QuizHomeScreen> {
       return;
     }
 
-    // rootNavigator: quiz poori screen pe khule (nested navigator me bhi chale)
+    // rootNavigator: open quiz on the full screen (works with nested navigator too)
     Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         builder: (_) => QuizPlayScreen(

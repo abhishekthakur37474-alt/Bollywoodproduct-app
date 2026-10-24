@@ -17,10 +17,10 @@ class _BollywoodQuizScreenState extends State<BollywoodQuizScreen> {
   int _selectedIndex = 0;
 
   static const _pages = [
-    QuizHomeScreen(),
-    QuizScoreScreen(),
-    QuizLeaderboardScreen(),
-    QuizProfileScreen(),
+    RepaintBoundary(child: QuizHomeScreen()),
+    RepaintBoundary(child: QuizScoreScreen()),
+    RepaintBoundary(child: QuizLeaderboardScreen()),
+    RepaintBoundary(child: QuizProfileScreen()),
   ];
 
   static const _titles = [
@@ -31,6 +31,7 @@ class _BollywoodQuizScreenState extends State<BollywoodQuizScreen> {
   ];
 
   void _onTabTapped(int index) {
+    if (index == _selectedIndex) return;
     setState(() => _selectedIndex = index);
   }
 
@@ -81,25 +82,29 @@ class _BollywoodQuizScreenState extends State<BollywoodQuizScreen> {
             ),
             child: Row(
               children: [
-                _buildNavItem(
-                  index: 0,
+                _QuizNavItem(
+                  selected: _selectedIndex == 0,
                   icon: HugeIcons.strokeRoundedHome07,
-                  label: "Home",
+                  label: 'Home',
+                  onTap: () => _onTabTapped(0),
                 ),
-                _buildNavItem(
-                  index: 1,
+                _QuizNavItem(
+                  selected: _selectedIndex == 1,
                   icon: HugeIcons.strokeRoundedStar,
-                  label: "Score",
+                  label: 'Score',
+                  onTap: () => _onTabTapped(1),
                 ),
-                _buildNavItem(
-                  index: 2,
+                _QuizNavItem(
+                  selected: _selectedIndex == 2,
                   icon: HugeIcons.strokeRoundedChampion,
-                  label: "Leaderboard",
+                  label: 'Leaderboard',
+                  onTap: () => _onTabTapped(2),
                 ),
-                _buildNavItem(
-                  index: 3,
+                _QuizNavItem(
+                  selected: _selectedIndex == 3,
                   icon: HugeIcons.strokeRoundedUser,
-                  label: "Profile",
+                  label: 'Profile',
+                  onTap: () => _onTabTapped(3),
                 ),
               ],
             ),
@@ -108,18 +113,29 @@ class _BollywoodQuizScreenState extends State<BollywoodQuizScreen> {
       ),
     );
   }
+}
 
-  Widget _buildNavItem({
-    required int index,
-    required dynamic icon,
-    required String label,
-  }) {
-    final isSelected = _selectedIndex == index;
+class _QuizNavItem extends StatelessWidget {
+  final bool selected;
+  final dynamic icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _QuizNavItem({
+    required this.selected,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? const Color(0xffD4AF37) : Colors.white54;
 
     return Expanded(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => _onTabTapped(index),
+        onTap: onTap,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
@@ -127,10 +143,8 @@ class _BollywoodQuizScreenState extends State<BollywoodQuizScreen> {
             HugeIcon(
               icon: icon,
               size: 20.0,
-              color: isSelected
-                  ? const Color(0xffD4AF37)
-                  : Colors.white54,
-              strokeWidth: isSelected ? 2.0 : 1.5,
+              color: color,
+              strokeWidth: selected ? 2.0 : 1.5,
             ),
             const SizedBox(height: 3),
             Text(
@@ -139,10 +153,8 @@ class _BollywoodQuizScreenState extends State<BollywoodQuizScreen> {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected
-                    ? const Color(0xffD4AF37)
-                    : Colors.white54,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: color,
                 letterSpacing: 0.2,
               ),
             ),

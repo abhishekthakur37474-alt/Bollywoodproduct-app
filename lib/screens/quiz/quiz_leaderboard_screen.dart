@@ -59,7 +59,7 @@ class _QuizLeaderboardScreenState extends State<QuizLeaderboardScreen> {
     super.dispose();
   }
 
-  // quiz save / login-logout pe saari cached boards purani ho jaati hain
+  // all cached boards become stale after quiz save / login-logout
   void _refresh() {
     _cache.clear();
     _load();
@@ -81,7 +81,7 @@ class _QuizLeaderboardScreenState extends State<QuizLeaderboardScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error = 'Leaderboard load nahi hua. Internet check karo.';
+        _error = 'Could not load leaderboard. Please check your internet.';
         _loading = false;
       });
     }
@@ -98,7 +98,7 @@ class _QuizLeaderboardScreenState extends State<QuizLeaderboardScreen> {
     final data = _cache[_period];
     final me = data?.me;
     final loggedIn = QuizService.userId != null;
-    // viewPadding = sirf system inset (extendBody se nahi badhta)
+    // viewPadding = system inset only (does not grow with extendBody)
     final bottomSafe = MediaQuery.of(context).viewPadding.bottom;
 
     final showMe = loggedIn && me != null;
@@ -114,13 +114,13 @@ class _QuizLeaderboardScreenState extends State<QuizLeaderboardScreen> {
             child: _buildBody(data, showMe),
           ),
         ),
-        // fixed "Your Rank" card: list iske upar tak hi scroll hoti hai
+        // fixed "Your Rank" card: list scrolls only up to this
         if (showMe)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: _buildMeCard(me!),
           ),
-        // navbar ke upar 8 ka gap
+        // gap above the navbar
         SizedBox(height: bottomSafe + 12 + 64 + 22), // navbar = 64 + 12 pad, +22 gap
       ],
     );
@@ -129,7 +129,7 @@ class _QuizLeaderboardScreenState extends State<QuizLeaderboardScreen> {
   // ---------------- tabs ----------------
   Widget _buildTabs() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
@@ -191,7 +191,7 @@ class _QuizLeaderboardScreenState extends State<QuizLeaderboardScreen> {
           _emptyBox(
             icon: Icons.wifi_off_rounded,
             title: _error ?? 'Something went wrong',
-            sub: 'Neeche kheench ke dobara try karo',
+            sub: 'Pull down to try again',
           ),
           const SizedBox(height: 14),
           Center(

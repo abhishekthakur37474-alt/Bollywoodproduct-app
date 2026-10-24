@@ -25,9 +25,9 @@ class _QuizScoreScreenState extends State<QuizScoreScreen> {
   @override
   void initState() {
     super.initState();
-    // quiz save hote hi (ya login ke baad) yaha refresh
+    // refresh here as soon as a quiz is saved (or after login)
     QuizService.scoreVersion.addListener(_load);
-    AuthService.bollyUserId.addListener(_load); // login/logout pe refresh
+    AuthService.bollyUserId.addListener(_load); // refresh on login/logout
     _load();
   }
 
@@ -57,7 +57,7 @@ class _QuizScoreScreenState extends State<QuizScoreScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error = 'Score load nahi hua. Internet check karo.';
+        _error = 'Could not load score. Please check your internet.';
         _loading = false;
       });
     }
@@ -148,7 +148,7 @@ class _QuizScoreScreenState extends State<QuizScoreScreen> {
           ),
           const SizedBox(height: 12),
           if (!loggedIn)
-            _msgBox('Score dekhne ke liye login karo')
+            _msgBox('Login to view your score')
           else if (_error != null)
             _msgBox(_error!)
           else if (s == null || s.recent.isEmpty)

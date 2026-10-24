@@ -6,7 +6,7 @@ import '../../services/auth_service.dart';
 
 // ---------------- dropdown options ----------------
 class QuizDuration {
-  final int value; // seconds (web me quiz_duration)
+  final int value; // seconds (quiz_duration on web)
   final String label;
   const QuizDuration(this.value, this.label);
 }
@@ -25,10 +25,10 @@ class QuizOptions {
 }
 
 // ---------------- questions ----------------
-/// Question text ka ek tukda (web me <strong>/<span style="color:..">)
+/// One piece of question text (on web: <strong>/<span style="color:..">)
 class QuestionSegment {
   final String text;
-  final String? colorHex; // "#RRGGBB" ya null
+  final String? colorHex; // "#RRGGBB" or null
   final bool bold;
   const QuestionSegment(this.text, this.colorHex, this.bold);
 }
@@ -37,7 +37,7 @@ class QuizQuestion {
   final int id;
   final List<QuestionSegment> segments;
   final List<String> options; // 4 options
-  final String videoId; // YouTube id (khali ho sakta hai, jaise topic 11)
+  final String videoId; // YouTube id (can be empty, e.g. topic 11)
   const QuizQuestion(this.id, this.segments, this.options, this.videoId);
 }
 
@@ -49,12 +49,12 @@ class AnswerResult {
 
 // ---------------- score ----------------
 class SavedScore {
-  final double points; // is quiz ke points (server ne nikale)
+  final double points; // points for this quiz (calculated by server)
   final int attempted;
   final int correct;
   final int wrong;
   final double totalPoints; // all-time total
-  final int? quizNumber; // user ka N-th quiz (history key)
+  final int? quizNumber; // user's N-th quiz (history key)
   final String? playedAt;
   const SavedScore(this.points, this.attempted, this.correct, this.wrong,
       this.totalPoints,
@@ -62,7 +62,7 @@ class SavedScore {
 }
 
 class RecentQuiz {
-  final int? quizNumber; // user_quiz_number (history detail ke liye)
+  final int? quizNumber; // user_quiz_number (for history detail)
   final String topic;
   final int level;
   final int duration; // seconds
@@ -75,20 +75,20 @@ class RecentQuiz {
       {this.quizNumber});
 }
 
-/// Ek quiz me attempt kiya hua question (history -> result screen).
+/// A question attempted in a quiz (history -> result screen).
 class AttemptedQuestion {
   final int id;
   final List<QuestionSegment> segments;
   final List<String> options; // 4 options
-  final int selected; // user ka option 1..4
-  final int correctOption; // sahi option 1..4
+  final int selected; // user's option 1..4
+  final int correctOption; // correct option 1..4
   const AttemptedQuestion(
       this.id, this.segments, this.options, this.selected, this.correctOption);
   bool get isCorrect => selected == correctOption;
 }
 
 class LeaderboardEntry {
-  final int? rank; // null = is period me khela nahi
+  final int? rank; // null = did not play in this period
   final int userId;
   final String name;
   final String picture;
@@ -123,11 +123,11 @@ class ScoreSummary {
 }
 
 class QuizService {
-  /// Logged-in user ki id (bollywoodprodu `users.id`).
-  /// Ab AuthService se automatic aati hai (login pe set, logout pe null).
+  /// Logged-in user id (bollywoodprodu `users.id`).
+  /// Comes automatically from AuthService (set on login, null on logout).
   static int? get userId => AuthService.bollyUserId.value;
 
-  /// Score save hone pe +1 hota hai, Score tab isse refresh hota hai.
+  /// Increments by 1 when a score is saved; Score tab refreshes from this.
   static final ValueNotifier<int> scoreVersion = ValueNotifier<int>(0);
 
   static const _scoreUrl = '$_base/quiz-score-api.php';
@@ -136,9 +136,9 @@ class QuizService {
   static const _base = 'https://www.bollywoodproduct.com/quiz';
   static const _optionsUrl = '$_base/quiz-options-api.php';
 
-  /// Har topic ki apni API file (topic id -> file name).
-  /// Naya topic banao to yaha ek line add karo.
-  /// NOTE: id=4 ki API abhi nahi bani, isliye wo topic "coming soon" dikhega.
+  /// Each topic has its own API file (topic id -> file name).
+  /// Add a line here when creating a new topic.
+  /// NOTE: id=4 API is not built yet, so that topic shows as "coming soon".
   static const _playApiFile = {
     1: 'guess-the-singer-api.php', // Guess the Singer
     2: 'song-music-director-api.php', // Song (Music Director)
@@ -152,12 +152,12 @@ class QuizService {
     11: 'find-actor-of-film-api.php', // Find Actor of Film
   };
 
-  /// Is topic ki API bani hai ya nahi.
+  /// Whether this topic has an API.
   static bool hasApi(int topicId) => _playApiFile.containsKey(topicId);
 
   static String _playUrl(int topicId) {
     final file = _playApiFile[topicId];
-    if (file == null) throw Exception('Is topic ki API abhi nahi bani');
+    if (file == null) throw Exception('API for this topic is not available yet');
     return '$_base/$file';
   }
 
@@ -203,7 +203,7 @@ class QuizService {
     return QuizOptions(durations, topics);
   }
 
-  /// Random naya question. null = is topic/level me aur question nahi bacha.
+  /// Random new question. null = no questions left for this topic/level.
   static Future<QuizQuestion?> fetchQuestion({
     required int generatorId,
     required int level,
@@ -237,7 +237,7 @@ class QuizService {
     );
   }
 
-  /// Answer sahi hai ya nahi (server batata hai, answer app me nahi aata).
+  /// Whether the answer is correct (server tells us; the answer is not sent to the app).
   static Future<AnswerResult> checkAnswer({
     required int topicId,
     required int questionId,
@@ -257,7 +257,7 @@ class QuizService {
   }
 
   // ---------------- score ----------------
-  /// Quiz khatam hone pe score save. Server answers se khud sahi/galat nikalta hai.
+  /// Save score when the quiz ends. Server calculates correct/wrong from answers.
   /// answers = [(questionId, chosenOption 1..4), ...]
   static Future<SavedScore> saveScore({
     required int topicId,
@@ -266,7 +266,7 @@ class QuizService {
     required List<MapEntry<int, int>> answers,
   }) async {
     final uid = userId;
-    if (uid == null) throw Exception('Login nahi hai');
+    if (uid == null) throw Exception('Not logged in');
     final data = await _postJson(Uri.parse(_scoreUrl), {
       'action': 'save',
       'user_id': '$uid',
@@ -291,7 +291,7 @@ class QuizService {
     );
   }
 
-  /// History quiz ke questions + attempts (server se). Khali list = detail nahi mili.
+  /// History quiz questions + attempts (from server). Empty list = detail not found.
   static Future<List<AttemptedQuestion>> fetchQuizDetail(int quizNumber) async {
     final uid = userId;
     if (uid == null) return [];
@@ -324,7 +324,7 @@ class QuizService {
     }).toList();
   }
 
-  /// Score tab ke liye total + recent quizzes. null = user login nahi.
+  /// Total + recent quizzes for the Score tab. null = user not logged in.
   static Future<ScoreSummary?> fetchSummary() async {
     final uid = userId;
     if (uid == null) return null;

@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'quiz_service.dart';
+import 'thinking_people.dart';
 
 const _gold = Color(0xffD4AF37);
 const _bg = Color(0xff0F0F0F);
 const _card = Color(0xff1A1A1A);
 
-/// Quiz khelne ki screen (abhi sirf topic id=1 ke liye use ho rahi hai).
+/// Screen for playing the quiz.
 class QuizPlayScreen extends StatefulWidget {
   final int topicId;
   final String topicName;
@@ -41,12 +42,12 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
   AnswerResult? _result;
 
   final List<int> _answeredIds = [];
-  final List<MapEntry<int, int>> _answers = []; // (questionId, option) server ko bhejne ke liye
+  final List<MapEntry<int, int>> _answers = []; // (questionId, option) to send to server
   int _attempted = 0;
   int _correct = 0;
 
   bool _finished = false;
-  bool _noMore = false; // saare questions khatam
+  bool _noMore = false; // all questions finished
 
   // score save
   bool _saving = false;
@@ -104,9 +105,48 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
     _saveScore();
   }
 
+  Future<void> _confirmExit() async {
+    if (_finished) return;
+    final leave = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: _card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Do you really want to exit?',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text(
+              'No',
+              style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text(
+              'Yes',
+              style: TextStyle(color: _gold, fontWeight: FontWeight.w800),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (leave == true && mounted) _finish();
+  }
+
   Future<void> _saveScore() async {
     if (_saving || _saved != null || _attempted == 0) return;
-    if (QuizService.userId == null) return; // login nahi, result me msg dikhega
+    if (QuizService.userId == null) return; // not logged in, result screen will show a message
     setState(() {
       _saving = true;
       _saveError = null;
@@ -127,7 +167,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _saveError = 'Score save nahi hua. Internet check karo.';
+        _saveError = 'Could not save score. Please check your internet.';
       });
     }
   }
@@ -159,7 +199,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error = 'Question load nahi hua. Internet check karo.';
+        _error = 'Could not load question. Please check your internet.';
         _loadingQ = false;
       });
     }
@@ -189,7 +229,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
       if (!mounted) return;
       setState(() => _selected = null);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Answer check nahi hua, dobara try karo.')),
+        const SnackBar(content: Text('Could not check answer, please try again.')),
       );
     }
   }
@@ -198,13 +238,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
   String _fmt(int s) =>
       '${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}';
 
-  Color _hex(String? hex, Color fallback) {
-    if (hex == null || hex.length != 7) return fallback;
-    final v = int.tryParse(hex.substring(1), radix: 16);
-    return v == null ? fallback : Color(0xFF000000 | v);
-  }
-
-  // Web rule: sahi = (minutes x level), galat = -1/4 of that
+  // Web rule: correct = (minutes x level), wrong = -1/4 of that
   double get _score {
     final per = (widget.durationSeconds / 60) * widget.level;
     final wrong = _attempted - _correct;
@@ -214,14 +248,20 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
   // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bg,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            _finished ? _buildResult() : _buildQuiz(),
-            if (!_started) _buildStartOverlay(),
-          ],
+    return PopScope(
+      canPop: _finished,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && !_finished) _confirmExit();
+      },
+      child: Scaffold(
+        backgroundColor: _bg,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              _finished ? _buildResult() : _buildQuiz(),
+              if (!_started) _buildStartOverlay(),
+            ],
+          ),
         ),
       ),
     );
@@ -257,210 +297,225 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
     );
   }
 
-  Widget _buildTopBar() {
-    final low = _timeLeft <= 10;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 6, 16, 6),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.close, color: Colors.white70),
-            tooltip: 'Exit',
-          ),
-          Expanded(
-            child: Text(
-              widget.topicName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const Icon(Icons.timer_outlined, size: 20, color: Color(0xff39FF14)),
-          const SizedBox(width: 6),
-          Text(
-            _fmt(_timeLeft),
-            style: TextStyle(
-              color: low ? Colors.redAccent : const Color(0xff39FF14),
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildQuiz() {
+    final low = _timeLeft <= 10;
+    final progress = widget.durationSeconds == 0
+        ? 0.0
+        : (_timeLeft / widget.durationSeconds).clamp(0.0, 1.0);
+
     return Column(
       children: [
-        _buildTopBar(),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+          child: Column(
             children: [
-              _buildStatusRow(),
-              const SizedBox(height: 14),
-              _buildQuestionBody(),
-              const SizedBox(height: 18),
               SizedBox(
-                height: 48,
-                child: OutlinedButton.icon(
-                  onPressed: _finish,
-                  icon: const Icon(Icons.flag, color: Colors.redAccent),
-                  label: const Text(
-                    'End Quiz',
-                    style: TextStyle(
-                      color: Colors.redAccent,
-                      fontWeight: FontWeight.w700,
+                height: 40,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: _confirmExit,
+                        tooltip: 'Close',
+                        icon: const Icon(Icons.close, color: Colors.white70, size: 22),
+                      ),
                     ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.redAccent),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                    Expanded(
+                      child: Text(
+                        widget.topicName,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ),
-                  ),
+                    SizedBox(
+                      width: 40,
+                      height: 40,
+                      child: Center(
+                        child: Text(
+                          '$_attempted',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Text(
+                    'Time',
+                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(99),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 6,
+                        backgroundColor: const Color(0xff2A2A2A),
+                        color: low ? Colors.redAccent : _gold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    _fmt(_timeLeft),
+                    style: TextStyle(
+                      color: low ? Colors.redAccent : Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildStatusRow() {
-    return Row(
-      children: [
-        _chip(Icons.check_circle_outline, 'Attempt: $_attempted', Colors.white70),
-        const SizedBox(width: 10),
-        _chip(Icons.edit_note, 'Correct: $_correct', const Color(0xff00FCFF)),
-        const Spacer(),
-        Text(
-          'Level ${widget.level}',
-          style: const TextStyle(color: _gold, fontWeight: FontWeight.w700),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+            child: _buildQuestionBody(),
+          ),
         ),
-      ],
-    );
-  }
-
-  Widget _chip(IconData icon, String text, Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: 4),
-        Text(text, style: TextStyle(color: color, fontSize: 13)),
       ],
     );
   }
 
   Widget _buildQuestionBody() {
     if (_error != null) {
-      return _messageCard(
-        _error!,
-        action: ElevatedButton(
-          onPressed: _loadNext,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _gold,
-            foregroundColor: const Color(0xff111111),
+      return Center(
+        child: _messageCard(
+          _error!,
+          action: ElevatedButton(
+            onPressed: _loadNext,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _gold,
+              foregroundColor: const Color(0xff111111),
+            ),
+            child: const Text('Retry'),
           ),
-          child: const Text('Retry'),
         ),
       );
     }
     final q = _question;
-    if (q == null || _loadingQ && _selected == null && _question == null) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 60),
-        child: Center(child: CircularProgressIndicator(color: _gold)),
-      );
+    if (q == null) {
+      return const Center(child: CircularProgressIndicator(color: _gold));
     }
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: _card,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0x33D4AF37)),
+        const SizedBox(
+          height: 150,
+          width: double.infinity,
+          child: ThinkingPeople(),
+        ),
+        Text(
+          'Level ${widget.level}',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: _gold,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.4,
           ),
-          child: Text.rich(
-            TextSpan(
-              children: q.segments
-                  .map(
-                    (s) => TextSpan(
-                      text: s.text,
-                      style: TextStyle(
-                        color: _hex(s.colorHex, Colors.white),
-                        fontWeight: s.bold ? FontWeight.w800 : FontWeight.w500,
+        ),
+        const SizedBox(height: 10),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 96),
+          child: SingleChildScrollView(
+            child: Text.rich(
+              TextSpan(
+                children: q.segments
+                    .map(
+                      (s) => TextSpan(
+                        text: s.text,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight:
+                              s.bold ? FontWeight.w800 : FontWeight.w600,
+                        ),
                       ),
-                    ),
-                  )
-                  .toList(),
+                    )
+                    .toList(),
+              ),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 18, height: 1.4),
             ),
-            style: const TextStyle(fontSize: 17, height: 1.45),
           ),
         ),
         const SizedBox(height: 16),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 1.9,
-          children: List.generate(4, (i) => _buildOption(q, i + 1)),
-        ),
+        for (var i = 1; i <= 4; i++) ...[
+          if (i > 1) const SizedBox(height: 10),
+          _buildOption(q, i),
+        ],
+        const Spacer(),
       ],
     );
   }
 
   Widget _buildOption(QuizQuestion q, int number) {
-    Color bg = _gold;
-    Color fg = const Color(0xff111111);
+    Color bg = _card;
+    Color fg = Colors.white;
+    Color border = const Color(0x22FFFFFF);
 
     if (_selected != null && _result != null) {
       if (number == _result!.correctOption) {
         bg = const Color(0xff2E7D32);
         fg = Colors.white;
+        border = const Color(0xff2E7D32);
       } else if (number == _selected) {
         bg = const Color(0xffC62828);
         fg = Colors.white;
-      } else {
-        bg = const Color(0x55D4AF37);
+        border = const Color(0xffC62828);
       }
     } else if (_selected == number) {
-      bg = const Color(0xffB8962E); // check ho raha hai
+      bg = _gold;
+      fg = const Color(0xff111111);
+      border = _gold;
     }
 
     return Material(
       color: bg,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(28),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(28),
         onTap: () => _onOption(number),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Center(
-            child: Text(
-              q.options[number - 1],
-              textAlign: TextAlign.center,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: fg,
-                fontWeight: FontWeight.w800,
-                fontSize: 14,
-              ),
+        child: Container(
+          width: double.infinity,
+          height: 52,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: border),
+          ),
+          child: Text(
+            q.options[number - 1],
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: fg,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              height: 1.25,
             ),
           ),
         ),
@@ -492,7 +547,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
   // ---------- result ----------
   Widget _buildResult() {
     final wrong = _attempted - _correct;
-    final sc = _saved?.points ?? _score; // save ho gaya to server ka score
+    final sc = _saved?.points ?? _score; // use server score once saved
     final scoreText =
         sc == sc.roundToDouble() ? sc.toInt().toString() : sc.toStringAsFixed(2);
 
@@ -603,7 +658,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
 
     if (_saving) {
       return line(
-        'Score save ho raha hai...',
+        'Saving score...',
         Colors.white70,
         lead: const SizedBox(
           width: 16,
@@ -623,10 +678,10 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
       );
     }
     if (QuizService.userId == null) {
-      return line('Score save karne ke liye login karo.', Colors.white54);
+      return line('Login to save your score.', Colors.white54);
     }
     return line(
-      _saveError ?? 'Score save nahi hua.',
+      _saveError ?? 'Could not save score.',
       Colors.redAccent,
       action: OutlinedButton(
         onPressed: _saveScore,
