@@ -30,6 +30,14 @@
           }
         },
         {
+          "client_id": "1031037529929-kqhcnkv8j1j6gq57n86bvu5fc6a315la.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bollywood.bollywood",
+            "certificate_hash": "e4993a06f2795d7b5a38441bdb7bea5872a33f0b"
+          }
+        },
+        {
           "client_id": "1031037529929-p5k5pguce47sf17icvg24v5h7t1i0h2b.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 // ---------------- dropdown options ----------------
@@ -44,7 +45,50 @@ class AnswerResult {
   const AnswerResult(this.correct, this.correctOption);
 }
 
+// ---------------- score ----------------
+class SavedScore {
+  final double points; // is quiz ke points (server ne nikale)
+  final int attempted;
+  final int correct;
+  final int wrong;
+  final double totalPoints; // all-time total
+  const SavedScore(
+      this.points, this.attempted, this.correct, this.wrong, this.totalPoints);
+}
+
+class RecentQuiz {
+  final String topic;
+  final int level;
+  final int duration; // seconds
+  final int attempted;
+  final int correct;
+  final double points;
+  final String playedAt;
+  const RecentQuiz(this.topic, this.level, this.duration, this.attempted,
+      this.correct, this.points, this.playedAt);
+}
+
+class ScoreSummary {
+  final double totalPoints;
+  final int totalCorrect;
+  final int totalAttempted;
+  final int quizzes;
+  final List<RecentQuiz> recent;
+  const ScoreSummary(this.totalPoints, this.totalCorrect, this.totalAttempted,
+      this.quizzes, this.recent);
+}
+
 class QuizService {
+  /// Logged-in user ki id (bollywoodprodu `users.id`).
+  /// Login ke baad set karo: `QuizService.userId = id;`  Logout pe null.
+  /// null ho to score save/show nahi hoga.
+  static int? userId;
+
+  /// Score save hone pe +1 hota hai, Score tab isse refresh hota hai.
+  static final ValueNotifier<int> scoreVersion = ValueNotifier<int>(0);
+
+  static const _scoreUrl = '$_base/quiz-score-api.php';
+
   static const _base = 'https://www.bollywoodproduct.com/quiz';
   static const _optionsUrl = '$_base/quiz-options-api.php';
 
@@ -75,6 +119,16 @@ class QuizService {
 
   static Future<Map<String, dynamic>> _getJson(Uri uri) async {
     final res = await http.get(uri).timeout(const Duration(seconds: 15));
+    if (res.statusCode != 200) {
+      throw Exception('Server error ${res.statusCode}');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  static Future<Map<String, dynamic>> _postJson(
+      Uri uri, Map<String, String> body) async {
+    final res =
+        await http.post(uri, body: body).timeout(const Duration(seconds: 15));
     if (res.statusCode != 200) {
       throw Exception('Server error ${res.statusCode}');
     }
@@ -155,6 +209,66 @@ class QuizService {
     return AnswerResult(
       data['correct'] == true,
       int.parse(data['correct_option'].toString()),
+    );
+  }
+
+  // ---------------- score ----------------
+  /// Quiz khatam hone pe score save. Server answers se khud sahi/galat nikalta hai.
+  /// answers = [(questionId, chosenOption 1..4), ...]
+  static Future<SavedScore> saveScore({
+    required int topicId,
+    required int level,
+    required int durationSeconds,
+    required List<MapEntry<int, int>> answers,
+  }) async {
+    final uid = userId;
+    if (uid == null) throw Exception('Login nahi hai');
+    final data = await _postJson(Uri.parse(_scoreUrl), {
+      'action': 'save',
+      'user_id': '$uid',
+      'generator_id': '$topicId',
+      'level': '$level',
+      'duration': '$durationSeconds',
+      'answers': answers.map((e) => '${e.key}:${e.value}').join(','),
+    });
+    if (data['status'] != 'ok') {
+      throw Exception(data['message']?.toString() ?? 'Bad response');
+    }
+    scoreVersion.value++;
+    return SavedScore(
+      double.parse(data['points'].toString()),
+      int.parse(data['attempted'].toString()),
+      int.parse(data['correct'].toString()),
+      int.parse(data['wrong'].toString()),
+      double.parse(data['total_points'].toString()),
+    );
+  }
+
+  /// Score tab ke liye total + recent quizzes. null = user login nahi.
+  static Future<ScoreSummary?> fetchSummary() async {
+    final uid = userId;
+    if (uid == null) return null;
+    final uri = Uri.parse(_scoreUrl)
+        .replace(queryParameters: {'action': 'summary', 'user_id': '$uid'});
+    final data = await _getJson(uri);
+    if (data['status'] != 'ok') throw Exception('Bad response');
+    final recent = (data['recent'] as List)
+        .map((r) => RecentQuiz(
+              r['topic'].toString(),
+              int.parse(r['level'].toString()),
+              int.parse(r['duration'].toString()),
+              int.parse(r['attempted'].toString()),
+              int.parse(r['correct'].toString()),
+              double.parse(r['points'].toString()),
+              r['played_at'].toString(),
+            ))
+        .toList();
+    return ScoreSummary(
+      double.parse(data['total_points'].toString()),
+      int.parse(data['total_correct'].toString()),
+      int.parse(data['total_attempted'].toString()),
+      int.parse(data['quizzes'].toString()),
+      recent,
     );
   }
 }

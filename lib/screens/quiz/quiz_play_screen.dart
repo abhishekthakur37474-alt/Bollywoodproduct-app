@@ -41,11 +41,17 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
   AnswerResult? _result;
 
   final List<int> _answeredIds = [];
+  final List<MapEntry<int, int>> _answers = []; // (questionId, option) server ko bhejne ke liye
   int _attempted = 0;
   int _correct = 0;
 
   bool _finished = false;
   bool _noMore = false; // saare questions khatam
+
+  // score save
+  bool _saving = false;
+  SavedScore? _saved;
+  String? _saveError;
 
   @override
   void initState() {
@@ -91,9 +97,39 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
   }
 
   void _finish() {
+    if (_finished) return;
     _timer?.cancel();
     if (!mounted) return;
     setState(() => _finished = true);
+    _saveScore();
+  }
+
+  Future<void> _saveScore() async {
+    if (_saving || _saved != null || _attempted == 0) return;
+    if (QuizService.userId == null) return; // login nahi, result me msg dikhega
+    setState(() {
+      _saving = true;
+      _saveError = null;
+    });
+    try {
+      final r = await QuizService.saveScore(
+        topicId: widget.topicId,
+        level: widget.level,
+        durationSeconds: widget.durationSeconds,
+        answers: _answers,
+      );
+      if (!mounted) return;
+      setState(() {
+        _saved = r;
+        _saving = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _saveError = 'Score save nahi hua. Internet check karo.';
+      });
+    }
   }
 
   Future<void> _loadNext() async {
@@ -145,6 +181,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
         _attempted++;
         if (res.correct) _correct++;
         _answeredIds.add(q.id);
+        _answers.add(MapEntry(q.id, option));
       });
       await Future.delayed(const Duration(milliseconds: 900));
       if (mounted && !_finished) _loadNext();
@@ -455,9 +492,9 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
   // ---------- result ----------
   Widget _buildResult() {
     final wrong = _attempted - _correct;
-    final scoreText = _score == _score.roundToDouble()
-        ? _score.toInt().toString()
-        : _score.toStringAsFixed(2);
+    final sc = _saved?.points ?? _score; // save ho gaya to server ka score
+    final scoreText =
+        sc == sc.roundToDouble() ? sc.toInt().toString() : sc.toStringAsFixed(2);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 30, 20, 30),
@@ -515,7 +552,9 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
             Expanded(child: _statBox('Wrong', '$wrong', Colors.redAccent)),
           ],
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 16),
+        _buildSaveStatus(),
+        const SizedBox(height: 20),
         SizedBox(
           height: 52,
           child: ElevatedButton(
@@ -535,6 +574,68 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSaveStatus() {
+    if (_attempted == 0) return const SizedBox.shrink();
+
+    Widget line(String text, Color color, {Widget? lead, Widget? action}) {
+      return Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (lead != null) ...[lead, const SizedBox(width: 8)],
+              Flexible(
+                child: Text(
+                  text,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: color, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+          if (action != null) ...[const SizedBox(height: 8), action],
+        ],
+      );
+    }
+
+    if (_saving) {
+      return line(
+        'Score save ho raha hai...',
+        Colors.white70,
+        lead: const SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2, color: _gold),
+        ),
+      );
+    }
+    final saved = _saved;
+    if (saved != null) {
+      final t = saved.totalPoints;
+      final tt = t == t.roundToDouble() ? t.toInt().toString() : t.toStringAsFixed(2);
+      return line(
+        'Score saved  ·  Total points: $tt',
+        const Color(0xff4CAF50),
+        lead: const Icon(Icons.check_circle, size: 18, color: Color(0xff4CAF50)),
+      );
+    }
+    if (QuizService.userId == null) {
+      return line('Score save karne ke liye login karo.', Colors.white54);
+    }
+    return line(
+      _saveError ?? 'Score save nahi hua.',
+      Colors.redAccent,
+      action: OutlinedButton(
+        onPressed: _saveScore,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _gold,
+          side: const BorderSide(color: _gold),
+        ),
+        child: const Text('Retry save'),
+      ),
     );
   }
 

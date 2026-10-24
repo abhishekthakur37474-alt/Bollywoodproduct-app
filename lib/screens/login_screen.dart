@@ -27,21 +27,26 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => loading = true);
 
     try {
+      print("🟡 [LOGIN] Continue with Google tapped");
       final user = await AuthService.signInWithGoogle();
       if (!mounted) return;
 
       if (user == null) {
+        print("🔴 [LOGIN] signInWithGoogle returned null (cancelled or failed silently)");
         setState(() => loading = false);
         return;
       }
 
+      print("🟢 [LOGIN] Login success uid=${user.uid} email=${user.email}");
       Navigator.pop(context);
-    } catch (_) {
+    } catch (e, stack) {
+      print("🔴 [LOGIN ERROR] $e");
+      print("🔴 [LOGIN STACK] $stack");
       if (!mounted) return;
       setState(() => loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Login failed. Please try again."),
+        SnackBar(
+          content: Text("Login failed: $e"),
         ),
       );
     }

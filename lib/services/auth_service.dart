@@ -28,24 +28,37 @@ class AuthService {
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
 
+      print("🟡 [AUTH] tokens: idToken=${googleAuth.idToken != null} accessToken=${googleAuth.accessToken != null}");
+      if (googleAuth.idToken == null) {
+        print("🔴 [AUTH] idToken is null, accessToken=${googleAuth.accessToken}");
+      } else {
+        print("🟡 [AUTH] idToken length=${googleAuth.idToken!.length}");
+      }
+
       if (googleAuth.idToken == null) {
         print("🔴 [AUTH] Missing idToken, retrying sign-in");
         await _googleSignIn.signOut();
         googleUser = await _googleSignIn.signIn();
-        if (googleUser == null) return null;
+        if (googleUser == null) {
+          print("🔴 [AUTH] Retry cancelled by user");
+          return null;
+        }
+        print("🟡 [AUTH] Retry account: ${googleUser.email}");
         final retryAuth = await googleUser.authentication;
+        print("🟡 [AUTH] retry tokens: idToken=${retryAuth.idToken != null} accessToken=${retryAuth.accessToken != null}");
         if (retryAuth.idToken == null) {
           throw FirebaseAuthException(
             code: 'missing-id-token',
-            message: 'Google sign-in failed. Please try again.',
+            message: 'Google sign-in failed. Missing idToken after retry.',
           );
         }
         return _signInToFirebase(retryAuth);
       }
 
       return _signInToFirebase(googleAuth);
-    } catch (e) {
-      print("🔴 [AUTH ERROR] $e");
+    } catch (e, stack) {
+      print("🔴 [AUTH ERROR] type=${e.runtimeType} error=$e");
+      print("🔴 [AUTH STACK] $stack");
       rethrow;
     }
   }
@@ -53,16 +66,27 @@ class AuthService {
   static Future<User?> _signInToFirebase(
     GoogleSignInAuthentication googleAuth,
   ) async {
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
+    try {
+      print("🟡 [AUTH] Signing into Firebase with Google credential");
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
 
-    final userCredential =
-        await FirebaseAuth.instance.signInWithCredential(credential);
+      final userCredential =
+          await FirebaseAuth.instance.signInWithCredential(credential);
 
-    print("🟢 [AUTH] Firebase login success: ${userCredential.user?.uid}");
-    return userCredential.user;
+      print("🟢 [AUTH] Firebase login success: uid=${userCredential.user?.uid} email=${userCredential.user?.email}");
+      return userCredential.user;
+    } on FirebaseAuthException catch (e, stack) {
+      print("🔴 [FIREBASE AUTH] code=${e.code} message=${e.message} email=${e.email} credential=${e.credential}");
+      print("🔴 [FIREBASE AUTH STACK] $stack");
+      rethrow;
+    } catch (e, stack) {
+      print("🔴 [FIREBASE SIGNIN ERROR] type=${e.runtimeType} error=$e");
+      print("🔴 [FIREBASE SIGNIN STACK] $stack");
+      rethrow;
+    }
   }
 
   static Future<void> signOut() async {
