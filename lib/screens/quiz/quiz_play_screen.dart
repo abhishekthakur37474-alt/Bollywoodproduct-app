@@ -109,36 +109,98 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
     if (_finished) return;
     final leave = await showDialog<bool>(
       context: context,
+      barrierColor: const Color(0xCC000000),
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: _card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Do you really want to exit?',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(22, 26, 22, 20),
+          decoration: BoxDecoration(
+            color: _card,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: const Color(0x22D4AF37)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: const Color(0x22D4AF37),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.logout_rounded, color: _gold, size: 28),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Exit Quiz?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Your current score will be saved and this attempt will end.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white70,
+                          side: const BorderSide(color: Color(0x33FFFFFF)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Text(
+                          'Exit',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _gold,
+                          foregroundColor: const Color(0xff111111),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Text(
+                          'Stay',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text(
-              'No',
-              style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text(
-              'Yes',
-              style: TextStyle(color: _gold, fontWeight: FontWeight.w800),
-            ),
-          ),
-        ],
       ),
     );
     if (leave == true && mounted) _finish();
@@ -338,15 +400,17 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
                       ),
                     ),
                     SizedBox(
-                      width: 40,
+                      width: 56,
                       height: 40,
                       child: Center(
                         child: Text(
-                          '$_attempted',
+                          'Level ${widget.level}',
+                          maxLines: 1,
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
+                            color: _gold,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
                           ),
                         ),
                       ),
@@ -422,21 +486,11 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
     return Column(
       children: [
         const SizedBox(
-          height: 150,
+          height: 190,
           width: double.infinity,
           child: ThinkingPeople(),
         ),
-        Text(
-          'Level ${widget.level}',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: _gold,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.4,
-          ),
-        ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 16),
         ConstrainedBox(
           constraints: const BoxConstraints(maxHeight: 96),
           child: SingleChildScrollView(
@@ -460,12 +514,51 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 16),
-        for (var i = 1; i <= 4; i++) ...[
-          if (i > 1) const SizedBox(height: 10),
-          _buildOption(q, i),
-        ],
         const Spacer(),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(
+            children: [
+              Text(
+                'Attempt - $_attempted',
+                style: const TextStyle(
+                  color: _gold,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'Correct - $_correct',
+                style: const TextStyle(
+                  color: Color(0xff39FF14),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+        for (var i = 1; i <= 4; i++) ...[
+          if (i > 1) const SizedBox(height: 12),
+          TweenAnimationBuilder<double>(
+            key: ValueKey('opt-${q.id}-$i'),
+            tween: Tween(begin: 0, end: 1),
+            duration: Duration(milliseconds: 380 + (i * 70)),
+            curve: Curves.easeOutCubic,
+            builder: (context, t, child) {
+              return Opacity(
+                opacity: t,
+                child: Transform.translate(
+                  offset: Offset(0, 28 * (1 - t)),
+                  child: child,
+                ),
+              );
+            },
+            child: _buildOption(q, i),
+          ),
+        ],
+        const SizedBox(height: 36),
       ],
     );
   }
@@ -493,17 +586,17 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
 
     return Material(
       color: bg,
-      borderRadius: BorderRadius.circular(28),
+      borderRadius: BorderRadius.circular(32),
       child: InkWell(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(32),
         onTap: () => _onOption(number),
         child: Container(
           width: double.infinity,
-          height: 52,
+          height: 62,
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(32),
             border: Border.all(color: border),
           ),
           child: Text(
