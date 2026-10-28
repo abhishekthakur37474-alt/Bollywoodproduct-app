@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'quiz_lang.dart';
 import 'quiz_play_screen.dart';
 import 'quiz_service.dart';
 
@@ -51,7 +52,7 @@ class _QuizHomeScreenState extends State<QuizHomeScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Could not load quiz options. Please check your internet.';
+        _error = QuizLang.t('load_options_fail');
         _loading = false;
       });
     }
@@ -81,7 +82,7 @@ class _QuizHomeScreenState extends State<QuizHomeScreen> {
     final t = _topic;
     if (t == null || _level == null || _duration == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select duration, level and topic first.')),
+        SnackBar(content: Text(QuizLang.t('select_all_first'))),
       );
       return;
     }
@@ -89,12 +90,12 @@ class _QuizHomeScreenState extends State<QuizHomeScreen> {
     // Only open topics that have an API
     if (!QuizService.hasApi(t.id)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: Color(0xff1A1A1A),
+        SnackBar(
+          backgroundColor: const Color(0xff1A1A1A),
           behavior: SnackBarBehavior.floating,
           content: Text(
-            'This topic is coming soon. Please choose another topic.',
-            style: TextStyle(color: Color(0xffD4AF37)),
+            QuizLang.t('topic_coming_soon'),
+            style: const TextStyle(color: Color(0xffD4AF37)),
           ),
         ),
       );
@@ -114,15 +115,15 @@ class _QuizHomeScreenState extends State<QuizHomeScreen> {
     );
   }
 
-  String _durationLabel() {
-    for (final d in _options!.durations) {
-      if (d.value == _duration) return d.label;
-    }
-    return '';
-  }
-
   @override
   Widget build(BuildContext context) {
+    return ValueListenableBuilder<String>(
+      valueListenable: QuizLang.code,
+      builder: (context, _, __) => _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
     if (_loading) {
       return const Center(
         child: CircularProgressIndicator(color: Color(0xffD4AF37)),
@@ -133,7 +134,7 @@ class _QuizHomeScreenState extends State<QuizHomeScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_error ?? 'Something went wrong',
+            Text(_error ?? QuizLang.t('something_wrong'),
                 style: const TextStyle(color: Colors.white70)),
             const SizedBox(height: 14),
             ElevatedButton(
@@ -142,7 +143,7 @@ class _QuizHomeScreenState extends State<QuizHomeScreen> {
                 backgroundColor: const Color(0xffD4AF37),
                 foregroundColor: const Color(0xff111111),
               ),
-              child: const Text('Retry'),
+              child: Text(QuizLang.t('retry')),
             ),
           ],
         ),
@@ -156,23 +157,38 @@ class _QuizHomeScreenState extends State<QuizHomeScreen> {
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 110),
       children: [
         _buildDropdown(
-          title: 'Select Duration',
-          options: o.durations.map((d) => _Opt(d.value, d.label)).toList(),
+          title: QuizLang.t('select_language'),
+          options: [
+            _Opt(QuizLang.en, QuizLang.t('english')),
+            _Opt(QuizLang.hi, QuizLang.t('hindi')),
+          ],
+          value: QuizLang.code.value,
+          onChanged: (v) => QuizLang.set(v as String),
+        ),
+        const SizedBox(height: 22),
+        _buildDropdown(
+          title: QuizLang.t('select_duration'),
+          options: o.durations
+              .map((d) => _Opt(d.value, QuizLang.minutes(d.value)))
+              .toList(),
           value: _duration,
           onChanged: (v) => setState(() => _duration = v as int),
         ),
         const SizedBox(height: 22),
         _buildDropdown(
-          title: 'Select Difficulty Level',
-          options:
-              (t?.levels ?? <int>[]).map((l) => _Opt(l, 'Level $l')).toList(),
+          title: QuizLang.t('select_difficulty'),
+          options: (t?.levels ?? <int>[])
+              .map((l) => _Opt(l, QuizLang.level(l)))
+              .toList(),
           value: _level,
           onChanged: (v) => setState(() => _level = v as int),
         ),
         const SizedBox(height: 22),
         _buildDropdown(
-          title: 'Select Topic',
-          options: o.topics.map((t) => _Opt(t.id, t.name)).toList(),
+          title: QuizLang.t('select_topic'),
+          options: o.topics
+              .map((t) => _Opt(t.id, QuizLang.topic(t.id, t.name)))
+              .toList(),
           value: _topicId,
           onChanged: (v) => _onTopicChanged(v as int),
         ),
@@ -189,9 +205,9 @@ class _QuizHomeScreenState extends State<QuizHomeScreen> {
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
-            child: const Text(
-              'Play Quiz',
-              style: TextStyle(
+            child: Text(
+              QuizLang.t('play_quiz'),
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.4,

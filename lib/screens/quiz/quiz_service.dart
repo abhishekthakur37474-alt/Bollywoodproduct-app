@@ -143,14 +143,16 @@ class QuizService {
     1: 'guess-the-singer-api.php', // Guess the Singer
     2: 'song-music-director-api.php', // Song (Music Director)
     3: 'song-lyricist-api.php', // Song (Lyricist)
-    5: 'director-of-upcoming-film-api.php', // Director of Upcoming Film
-    6: 'film-director-api.php', // Film Director
-    7: 'film-producer-api.php', // Film Producer
-    8: 'producer-of-upcoming-film-api.php', // Upcoming Film Producers
-    9: 'production-house-of-upcoming-film-api.php', // Upcoming Films of Production House
-    10: 'production-house-of-film-api.php', // Film Production House
-    11: 'find-actor-of-film-api.php', // Find Actor of Film
+    // 5: 'director-of-upcoming-film-api.php', // Director of Upcoming Film
+    // 6: 'film-director-api.php', // Film Director
+    // 7: 'film-producer-api.php', // Film Producer
+    // 8: 'producer-of-upcoming-film-api.php', // Upcoming Film Producers
+    // 9: 'production-house-of-upcoming-film-api.php', // Upcoming Films of Production House
+    // 10: 'production-house-of-film-api.php', // Film Production House
+    11: 'find-actor-of-film-api.php', // Film Cast Quiz
   };
+
+  static const _visibleTopicIds = {1, 2, 3, 11};
 
   /// Whether this topic has an API.
   static bool hasApi(int topicId) => _playApiFile.containsKey(topicId);
@@ -198,6 +200,7 @@ class QuizService {
                   .map((l) => int.parse(l.toString()))
                   .toList(),
             ))
+        .where((t) => _visibleTopicIds.contains(t.id))
         .toList();
 
     return QuizOptions(durations, topics);

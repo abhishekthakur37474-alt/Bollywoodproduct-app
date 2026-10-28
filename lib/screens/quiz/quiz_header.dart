@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import '../../widgets/bottom_nav.dart';
+import 'quiz_lang.dart';
 
 class QuizHeader extends StatelessWidget {
   final String title;
@@ -64,7 +65,7 @@ class QuizHeader extends StatelessWidget {
                   child: showExit
                       ? IconButton(
                           onPressed: () => _exitToMain(context),
-                          tooltip: 'Exit',
+                           tooltip: QuizLang.t('exit'),
                           padding: EdgeInsets.zero,
                           icon: const HugeIcon(
                             icon: HugeIcons.strokeRoundedLogout02,

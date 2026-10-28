@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import '../../services/auth_service.dart';
+import '../login_screen.dart';
+import 'quiz_lang.dart';
 import 'quiz_result_screen.dart';
 import 'quiz_service.dart';
 
@@ -57,16 +59,23 @@ class _QuizScoreScreenState extends State<QuizScoreScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error = 'Could not load score. Please check your internet.';
+        _error = QuizLang.t('load_score_fail');
         _loading = false;
       });
     }
   }
 
-  String _fmtDuration(int sec) => '${sec ~/ 60} min';
+  String _fmtDuration(int sec) => QuizLang.minutes(sec);
 
   @override
   Widget build(BuildContext context) {
+    return ValueListenableBuilder<String>(
+      valueListenable: QuizLang.code,
+      builder: (context, _, __) => _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
     final loggedIn = QuizService.userId != null;
     final s = _summary;
 
@@ -78,9 +87,9 @@ class _QuizScoreScreenState extends State<QuizScoreScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 110),
         children: [
-          const Text(
-            'Your Score',
-            style: TextStyle(
+          Text(
+            QuizLang.t('your_score'),
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -120,17 +129,23 @@ class _QuizScoreScreenState extends State<QuizScoreScreen> {
                     ),
                   ),
                 const SizedBox(height: 6),
-                const Text(
-                  'Total Points',
-                  style: TextStyle(color: Colors.white54, fontSize: 14),
+                Text(
+                  QuizLang.t('total_points'),
+                  style: const TextStyle(color: Colors.white54, fontSize: 14),
                 ),
                 if (s != null) ...[
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Expanded(child: _mini('Quizzes', '${s.quizzes}')),
-                      Expanded(child: _mini('Attempted', '${s.totalAttempted}')),
-                      Expanded(child: _mini('Correct', '${s.totalCorrect}')),
+                      Expanded(
+                          child:
+                              _mini(QuizLang.t('quizzes'), '${s.quizzes}')),
+                      Expanded(
+                          child: _mini(QuizLang.t('attempted'),
+                              '${s.totalAttempted}')),
+                      Expanded(
+                          child: _mini(QuizLang.t('correct'),
+                              '${s.totalCorrect}')),
                     ],
                   ),
                 ],
@@ -138,9 +153,9 @@ class _QuizScoreScreenState extends State<QuizScoreScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Recent Quizzes',
-            style: TextStyle(
+          Text(
+            QuizLang.t('recent_quizzes'),
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -148,11 +163,13 @@ class _QuizScoreScreenState extends State<QuizScoreScreen> {
           ),
           const SizedBox(height: 12),
           if (!loggedIn)
-            _msgBox('Login to view your score')
+            _loginPrompt()
           else if (_error != null)
             _msgBox(_error!)
           else if (s == null || s.recent.isEmpty)
-            _msgBox(_loading ? 'Loading...' : 'No quiz history yet')
+            _msgBox(_loading
+                ? QuizLang.t('loading')
+                : QuizLang.t('no_history'))
           else
             ...s.recent.map(_recentTile),
         ],
@@ -174,6 +191,48 @@ class _QuizScoreScreenState extends State<QuizScoreScreen> {
         const SizedBox(height: 2),
         Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
       ],
+    );
+  }
+
+  Widget _loginPrompt() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Text(
+            QuizLang.t('login_to_view_score'),
+            style: const TextStyle(color: Colors.white38, fontSize: 14),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.of(context, rootNavigator: true).push(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _gold,
+                foregroundColor: const Color(0xff111111),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: Text(
+                QuizLang.t('login'),
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -215,7 +274,7 @@ class _QuizScoreScreenState extends State<QuizScoreScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  q.topic,
+                  QuizLang.topicName(q.topic),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -226,7 +285,7 @@ class _QuizScoreScreenState extends State<QuizScoreScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Level ${q.level} · ${_fmtDuration(q.duration)} · ${q.correct}/${q.attempted} correct',
+                  '${QuizLang.level(q.level)} · ${_fmtDuration(q.duration)} · ${QuizLang.t('correct_of').replaceAll('{c}', '${q.correct}').replaceAll('{a}', '${q.attempted}')}',
                   style: const TextStyle(color: Colors.white54, fontSize: 12),
                 ),
                 const SizedBox(height: 2),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'quiz_lang.dart';
 import 'quiz_service.dart';
 
 const _gold = Color(0xffD4AF37);
@@ -41,6 +42,13 @@ class _QuizResultScreenState extends State<QuizResultScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: QuizLang.changes,
+      builder: (context, _) => _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
     final q = widget.quiz;
 
     return Scaffold(
@@ -48,14 +56,14 @@ class _QuizResultScreenState extends State<QuizResultScreen> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: const Text('Quiz Result'),
+        title: Text(QuizLang.t('quiz_result')),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
         children: [
           Center(
             child: Text(
-              q.topic,
+              QuizLang.topicName(q.topic),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
@@ -67,14 +75,14 @@ class _QuizResultScreenState extends State<QuizResultScreen> {
           const SizedBox(height: 4),
           Center(
             child: Text(
-              'Level ${q.level} · ${q.duration ~/ 60} min · ${q.playedAt}',
+              '${QuizLang.level(q.level)} · ${QuizLang.minutes(q.duration)} · ${q.playedAt}',
               style: const TextStyle(color: Colors.white54, fontSize: 12),
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'Your Quiz Responses',
-            style: TextStyle(
+          Text(
+            QuizLang.t('your_responses'),
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -93,19 +101,25 @@ class _QuizResultScreenState extends State<QuizResultScreen> {
               if (snap.hasError) {
                 return Column(
                   children: [
-                    _note('Could not load questions.\n${snap.error}'),
+                    _note('${QuizLang.t('load_questions_fail')}\n${snap.error}'),
                     TextButton(
                       onPressed: () => setState(() => _future = _load()),
-                      child: const Text('Retry',
-                          style: TextStyle(color: _gold)),
+                      child: Text(QuizLang.t('retry'),
+                          style: const TextStyle(color: _gold)),
                     ),
                   ],
                 );
               }
               final qs = snap.data ?? const <AttemptedQuestion>[];
               if (qs.isEmpty) {
-                return _note('Data Not Available');
+                return _note(QuizLang.t('data_na'));
               }
+              QuizLang.prefetch([
+                for (final a in qs) ...[
+                  ...a.segments.map((s) => s.text),
+                  ...a.options,
+                ],
+              ]);
               return Column(
                 children: [
                   for (var i = 0; i < qs.length; i++)
@@ -163,7 +177,7 @@ class _QuizResultScreenState extends State<QuizResultScreen> {
                 ),
                 ...a.segments.map(
                   (s) => TextSpan(
-                    text: s.text,
+                    text: QuizLang.live(s.text),
                     style: TextStyle(
                       color: _hex(s.colorHex, Colors.white),
                       fontWeight: s.bold ? FontWeight.w800 : FontWeight.w500,
@@ -177,7 +191,9 @@ class _QuizResultScreenState extends State<QuizResultScreen> {
           subtitle: Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(
-              ok ? '✅ Correct' : '❌ Wrong',
+              ok
+                  ? QuizLang.t('tag_correct')
+                  : QuizLang.t('tag_wrong'),
               style: TextStyle(
                   color: accent, fontSize: 12, fontWeight: FontWeight.w700),
             ),
@@ -199,8 +215,8 @@ class _QuizResultScreenState extends State<QuizResultScreen> {
     if (isMine && !isCorrect) bg = const Color(0xff7F1D1D);
 
     final tags = <String>[
-      if (isMine) '✅ Your Answer',
-      if (isCorrect) '🎯 Correct',
+      if (isMine) QuizLang.t('your_answer'),
+      if (isCorrect) QuizLang.t('tag_correct'),
     ];
 
     return Container(
@@ -210,7 +226,7 @@ class _QuizResultScreenState extends State<QuizResultScreen> {
       decoration:
           BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
       child: Text(
-        'Option $n: ${a.options[n - 1]}${tags.isEmpty ? '' : '  ${tags.join('  ')}'}',
+        '${QuizLang.t('option_n').replaceAll('{n}', '$n')}: ${QuizLang.live(a.options[n - 1])}${tags.isEmpty ? '' : '  ${tags.join('  ')}'}',
         style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.35),
       ),
     );

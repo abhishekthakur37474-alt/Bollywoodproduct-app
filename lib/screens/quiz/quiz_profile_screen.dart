@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../services/auth_service.dart';
 import '../login_screen.dart';
+import 'quiz_lang.dart';
 
 class QuizProfileScreen extends StatelessWidget {
   const QuizProfileScreen({super.key});
@@ -13,6 +14,13 @@ class QuizProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return ValueListenableBuilder<String>(
+      valueListenable: QuizLang.code,
+      builder: (context, _, __) => _buildAuth(),
+    );
+  }
+
+  Widget _buildAuth() {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, authSnap) {
@@ -42,7 +50,7 @@ class QuizProfileScreen extends StatelessWidget {
                 ? data['name'] as String
                 : (user.displayName?.trim().isNotEmpty == true
                     ? user.displayName!
-                    : 'Quiz Player');
+                    : QuizLang.t('quiz_player'));
             final email = (data['email'] as String?)?.trim().isNotEmpty == true
                 ? data['email'] as String
                 : (user.email ?? '');
@@ -107,10 +115,11 @@ class QuizProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                if (phone.isNotEmpty) _infoTile('Phone', phone),
-                if (city.isNotEmpty) _infoTile('City', city),
-                if (state.isNotEmpty) _infoTile('State', state),
-                if (pincode.isNotEmpty) _infoTile('Pincode', pincode),
+                if (phone.isNotEmpty) _infoTile(QuizLang.t('phone'), phone),
+                if (city.isNotEmpty) _infoTile(QuizLang.t('city'), city),
+                if (state.isNotEmpty) _infoTile(QuizLang.t('state'), state),
+                if (pincode.isNotEmpty)
+                  _infoTile(QuizLang.t('pincode'), pincode),
                 const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
@@ -124,10 +133,10 @@ class QuizProfileScreen extends StatelessWidget {
                       ),
                     ),
                     onPressed: () => _logout(context),
-                    child: const Text(
-                      'Logout',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
+                      child: Text(
+                        QuizLang.t('logout'),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                   ),
                 ),
               ],
@@ -162,18 +171,18 @@ class QuizProfileScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 14),
-              const Text(
-                'Guest',
-                style: TextStyle(
+              Text(
+                QuizLang.t('guest'),
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Login to see your profile',
-                style: TextStyle(color: Colors.white38, fontSize: 13),
+              Text(
+                QuizLang.t('login_to_see_profile'),
+                style: const TextStyle(color: Colors.white38, fontSize: 13),
               ),
               const SizedBox(height: 18),
               SizedBox(
@@ -193,9 +202,9 @@ class QuizProfileScreen extends StatelessWidget {
                       MaterialPageRoute(builder: (_) => const LoginScreen()),
                     );
                   },
-                  child: const Text(
-                    'Continue with Google',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                  child: Text(
+                    QuizLang.t('continue_google'),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
               ),

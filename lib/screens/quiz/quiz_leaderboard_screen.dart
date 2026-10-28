@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import '../../services/auth_service.dart';
+import 'quiz_lang.dart';
 import 'quiz_service.dart';
 
 const _gold = Color(0xffD4AF37);
@@ -32,12 +33,7 @@ class QuizLeaderboardScreen extends StatefulWidget {
 }
 
 class _QuizLeaderboardScreenState extends State<QuizLeaderboardScreen> {
-  static const _periods = [
-    ('today', 'Today'),
-    ('week', 'This Week'),
-    ('month', 'This Month'),
-    ('year', 'This Year'),
-  ];
+  static const _periodKeys = ['today', 'week', 'month', 'year'];
 
   String _period = 'today';
   final Map<String, LeaderboardData> _cache = {};
@@ -81,7 +77,7 @@ class _QuizLeaderboardScreenState extends State<QuizLeaderboardScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error = 'Could not load leaderboard. Please check your internet.';
+        _error = QuizLang.t('load_board_fail');
         _loading = false;
       });
     }
@@ -95,6 +91,13 @@ class _QuizLeaderboardScreenState extends State<QuizLeaderboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return ValueListenableBuilder<String>(
+      valueListenable: QuizLang.code,
+      builder: (context, _, __) => _buildScreen(),
+    );
+  }
+
+  Widget _buildScreen() {
     final data = _cache[_period];
     final me = data?.me;
     final loggedIn = QuizService.userId != null;
@@ -138,12 +141,12 @@ class _QuizLeaderboardScreenState extends State<QuizLeaderboardScreen> {
           border: Border.all(color: const Color(0x22D4AF37)),
         ),
         child: Row(
-          children: _periods.map((p) {
-            final sel = p.$1 == _period;
+          children: _periodKeys.map((p) {
+            final sel = p == _period;
             return Expanded(
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: () => _selectPeriod(p.$1),
+                onTap: () => _selectPeriod(p),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.symmetric(vertical: 10),
@@ -153,7 +156,7 @@ class _QuizLeaderboardScreenState extends State<QuizLeaderboardScreen> {
                   ),
                   alignment: Alignment.center,
                   child: Text(
-                    p.$2.replaceFirst('This ', ''),
+                    QuizLang.t(p),
                     maxLines: 1,
                     style: TextStyle(
                       fontSize: 12.5,
@@ -190,8 +193,8 @@ class _QuizLeaderboardScreenState extends State<QuizLeaderboardScreen> {
         children: [
           _emptyBox(
             icon: Icons.wifi_off_rounded,
-            title: _error ?? 'Something went wrong',
-            sub: 'Pull down to try again',
+            title: _error ?? QuizLang.t('something_wrong'),
+            sub: QuizLang.t('pull_retry'),
           ),
           const SizedBox(height: 14),
           Center(
@@ -201,7 +204,7 @@ class _QuizLeaderboardScreenState extends State<QuizLeaderboardScreen> {
                 backgroundColor: _gold,
                 foregroundColor: const Color(0xff111111),
               ),
-              child: const Text('Retry'),
+              child: Text(QuizLang.t('retry')),
             ),
           ),
         ],
@@ -216,8 +219,8 @@ class _QuizLeaderboardScreenState extends State<QuizLeaderboardScreen> {
         children: [
           _emptyBox(
             icon: Icons.emoji_events_outlined,
-            title: 'No scores yet for this period',
-            sub: 'Be the first to climb the board!',
+            title: QuizLang.t('no_scores'),
+            sub: QuizLang.t('be_first'),
           ),
         ],
       );
@@ -311,7 +314,7 @@ class _QuizLeaderboardScreenState extends State<QuizLeaderboardScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Text(
-            isMe ? '${e.name} (You)' : e.name,
+            isMe ? '${e.name} ${QuizLang.t('you_suffix')}' : e.name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
@@ -321,7 +324,7 @@ class _QuizLeaderboardScreenState extends State<QuizLeaderboardScreen> {
         ),
         const SizedBox(height: 2),
         Text(
-          '${_pts(e.points)} pts',
+          '${_pts(e.points)} ${QuizLang.t('pts')}',
           style: const TextStyle(
               color: _gold, fontSize: 12, fontWeight: FontWeight.w800),
         ),
@@ -374,7 +377,7 @@ class _QuizLeaderboardScreenState extends State<QuizLeaderboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isMe ? '${e.name} (You)' : e.name,
+                  isMe ? '${e.name} ${QuizLang.t('you_suffix')}' : e.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -384,7 +387,9 @@ class _QuizLeaderboardScreenState extends State<QuizLeaderboardScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${e.correct}/${e.attempted} correct',
+                  QuizLang.t('correct_of')
+                      .replaceAll('{c}', '${e.correct}')
+                      .replaceAll('{a}', '${e.attempted}'),
                   style: const TextStyle(color: Colors.white38, fontSize: 11),
                 ),
               ],
@@ -436,23 +441,25 @@ class _QuizLeaderboardScreenState extends State<QuizLeaderboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Your Rank',
-                    style: TextStyle(
+                Text(QuizLang.t('your_rank'),
+                    style: const TextStyle(
                         color: Colors.white,
                         fontSize: 14,
                         fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
                 Text(
                   ranked
-                      ? '${me.correct}/${me.attempted} correct'
-                      : 'Play a quiz to get ranked',
+                      ? QuizLang.t('correct_of')
+                          .replaceAll('{c}', '${me.correct}')
+                          .replaceAll('{a}', '${me.attempted}')
+                      : QuizLang.t('play_to_rank'),
                   style: const TextStyle(color: Colors.white54, fontSize: 11.5),
                 ),
               ],
             ),
           ),
           Text(
-            '${_pts(me.points)} pts',
+            '${_pts(me.points)} ${QuizLang.t('pts')}',
             style: const TextStyle(
                 color: _gold, fontSize: 16, fontWeight: FontWeight.w800),
           ),

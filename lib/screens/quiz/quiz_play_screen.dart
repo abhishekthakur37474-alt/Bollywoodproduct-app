@@ -1,11 +1,26 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../login_screen.dart';
+import 'quiz_lang.dart';
 import 'quiz_service.dart';
 import 'thinking_people.dart';
 
 const _gold = Color(0xffD4AF37);
 const _bg = Color(0xff0F0F0F);
 const _card = Color(0xff1A1A1A);
+
+Color _hex(String? hex, Color fallback) {
+  if (hex == null) return fallback;
+  var h = hex.trim();
+  if (h.isEmpty) return fallback;
+  if (h.startsWith('#')) h = h.substring(1);
+  if (h.length == 3) {
+    h = '${h[0]}${h[0]}${h[1]}${h[1]}${h[2]}${h[2]}';
+  }
+  if (h.length != 6) return fallback;
+  final v = int.tryParse(h, radix: 16);
+  return v == null ? fallback : Color(0xFF000000 | v);
+}
 
 /// Screen for playing the quiz.
 class QuizPlayScreen extends StatefulWidget {
@@ -134,20 +149,20 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
                 child: const Icon(Icons.logout_rounded, color: _gold, size: 28),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Exit Quiz?',
+              Text(
+                QuizLang.t('exit_quiz'),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Your current score will be saved and this attempt will end.',
+              Text(
+                QuizLang.t('exit_quiz_msg'),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 13,
                   height: 1.45,
@@ -168,9 +183,9 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: const Text(
-                          'Exit',
-                          style: TextStyle(fontWeight: FontWeight.w700),
+                        child: Text(
+                          QuizLang.t('exit'),
+                          style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),
@@ -189,9 +204,9 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: const Text(
-                          'Stay',
-                          style: TextStyle(fontWeight: FontWeight.w800),
+                        child: Text(
+                          QuizLang.t('stay'),
+                          style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                       ),
                     ),
@@ -204,6 +219,14 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
       ),
     );
     if (leave == true && mounted) _finish();
+  }
+
+  Future<void> _openLoginThenSave() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+    );
+    if (!mounted) return;
+    if (QuizService.userId != null) _saveScore();
   }
 
   Future<void> _saveScore() async {
@@ -229,7 +252,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _saveError = 'Could not save score. Please check your internet.';
+        _saveError = QuizLang.t('save_fail');
       });
     }
   }
@@ -254,6 +277,10 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
         _finish();
         return;
       }
+      QuizLang.prefetch([
+        ...q.segments.map((s) => s.text),
+        ...q.options,
+      ]);
       setState(() {
         _question = q;
         _loadingQ = false;
@@ -261,7 +288,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _error = 'Could not load question. Please check your internet.';
+        _error = QuizLang.t('load_question_fail');
         _loadingQ = false;
       });
     }
@@ -291,7 +318,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
       if (!mounted) return;
       setState(() => _selected = null);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not check answer, please try again.')),
+        SnackBar(content: Text(QuizLang.t('check_answer_fail'))),
       );
     }
   }
@@ -318,11 +345,14 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
       child: Scaffold(
         backgroundColor: _bg,
         body: SafeArea(
-          child: Stack(
-            children: [
-              _finished ? _buildResult() : _buildQuiz(),
-              if (!_started) _buildStartOverlay(),
-            ],
+          child: AnimatedBuilder(
+            animation: QuizLang.changes,
+            builder: (context, _) => Stack(
+              children: [
+                _finished ? _buildResult() : _buildQuiz(),
+                if (!_started) _buildStartOverlay(),
+              ],
+            ),
           ),
         ),
       ),
@@ -336,9 +366,9 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              'QUIZ STARTING IN',
-              style: TextStyle(
+            Text(
+              QuizLang.t('quiz_starting'),
+              style: const TextStyle(
                 color: _gold,
                 letterSpacing: 2,
                 fontWeight: FontWeight.w600,
@@ -382,13 +412,13 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
                       child: IconButton(
                         padding: EdgeInsets.zero,
                         onPressed: _confirmExit,
-                        tooltip: 'Close',
+                        tooltip: QuizLang.t('close'),
                         icon: const Icon(Icons.close, color: Colors.white70, size: 22),
                       ),
                     ),
                     Expanded(
                       child: Text(
-                        widget.topicName,
+                        QuizLang.topicName(widget.topicName),
                         textAlign: TextAlign.center,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -404,7 +434,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
                       height: 40,
                       child: Center(
                         child: Text(
-                          'Level ${widget.level}',
+                          QuizLang.level(widget.level),
                           maxLines: 1,
                           style: const TextStyle(
                             color: _gold,
@@ -421,9 +451,9 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  const Text(
-                    'Time',
-                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                  Text(
+                    QuizLang.t('time'),
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -473,7 +503,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
               backgroundColor: _gold,
               foregroundColor: const Color(0xff111111),
             ),
-            child: const Text('Retry'),
+            child: Text(QuizLang.t('retry')),
           ),
         ),
       );
@@ -499,9 +529,9 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
                 children: q.segments
                     .map(
                       (s) => TextSpan(
-                        text: s.text,
+                        text: QuizLang.live(s.text),
                         style: TextStyle(
-                          color: Colors.white,
+                          color: _hex(s.colorHex, Colors.white),
                           fontWeight:
                               s.bold ? FontWeight.w800 : FontWeight.w600,
                         ),
@@ -520,7 +550,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
           child: Row(
             children: [
               Text(
-                'Attempt - $_attempted',
+                '${QuizLang.t('attempt')} - $_attempted',
                 style: const TextStyle(
                   color: _gold,
                   fontSize: 13,
@@ -529,7 +559,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
               ),
               const Spacer(),
               Text(
-                'Correct - $_correct',
+                '${QuizLang.t('correct')} - $_correct',
                 style: const TextStyle(
                   color: Color(0xff39FF14),
                   fontSize: 13,
@@ -600,7 +630,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
             border: Border.all(color: border),
           ),
           child: Text(
-            q.options[number - 1],
+            QuizLang.live(q.options[number - 1]),
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -651,7 +681,9 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
         const SizedBox(height: 10),
         Center(
           child: Text(
-            _noMore && _timeLeft > 0 ? 'All Questions Done!' : 'Quiz Over',
+            _noMore && _timeLeft > 0
+                ? QuizLang.t('all_done')
+                : QuizLang.t('quiz_over'),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 22,
@@ -662,7 +694,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
         const SizedBox(height: 4),
         Center(
           child: Text(
-            '${widget.topicName} · Level ${widget.level}',
+            '${QuizLang.topicName(widget.topicName)} · ${QuizLang.level(widget.level)}',
             style: const TextStyle(color: Colors.white54, fontSize: 13),
           ),
         ),
@@ -684,20 +716,25 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const Text('Score',
-                  style: TextStyle(color: Colors.white54, fontSize: 14)),
+              Text(QuizLang.t('score_label'),
+                  style: const TextStyle(color: Colors.white54, fontSize: 14)),
             ],
           ),
         ),
         const SizedBox(height: 14),
         Row(
           children: [
-            Expanded(child: _statBox('Attempted', '$_attempted', Colors.white)),
+            Expanded(
+                child: _statBox(
+                    QuizLang.t('attempted'), '$_attempted', Colors.white)),
             const SizedBox(width: 10),
             Expanded(
-                child: _statBox('Correct', '$_correct', const Color(0xff4CAF50))),
+                child: _statBox(QuizLang.t('correct'), '$_correct',
+                    const Color(0xff4CAF50))),
             const SizedBox(width: 10),
-            Expanded(child: _statBox('Wrong', '$wrong', Colors.redAccent)),
+            Expanded(
+                child:
+                    _statBox(QuizLang.t('wrong'), '$wrong', Colors.redAccent)),
           ],
         ),
         const SizedBox(height: 16),
@@ -715,9 +752,9 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
-            child: const Text(
-              'Back to Quiz Home',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            child: Text(
+              QuizLang.t('back_home'),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
             ),
           ),
         ),
@@ -751,7 +788,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
 
     if (_saving) {
       return line(
-        'Saving score...',
+        QuizLang.t('saving_score'),
         Colors.white70,
         lead: const SizedBox(
           width: 16,
@@ -765,16 +802,38 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
       final t = saved.totalPoints;
       final tt = t == t.roundToDouble() ? t.toInt().toString() : t.toStringAsFixed(2);
       return line(
-        'Score saved  ·  Total points: $tt',
+        QuizLang.t('score_saved').replaceAll('{n}', tt),
         const Color(0xff4CAF50),
         lead: const Icon(Icons.check_circle, size: 18, color: Color(0xff4CAF50)),
       );
     }
     if (QuizService.userId == null) {
-      return line('Login to save your score.', Colors.white54);
+      return line(
+        QuizLang.t('login_to_save'),
+        Colors.white54,
+        action: SizedBox(
+          width: double.infinity,
+          height: 46,
+          child: ElevatedButton(
+            onPressed: _openLoginThenSave,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _gold,
+              foregroundColor: const Color(0xff111111),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: Text(
+              QuizLang.t('login'),
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+        ),
+      );
     }
     return line(
-      _saveError ?? 'Could not save score.',
+        _saveError ?? QuizLang.t('save_fail'),
       Colors.redAccent,
       action: OutlinedButton(
         onPressed: _saveScore,
@@ -782,7 +841,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
           foregroundColor: _gold,
           side: const BorderSide(color: _gold),
         ),
-        child: const Text('Retry save'),
+        child: Text(QuizLang.t('retry_save')),
       ),
     );
   }

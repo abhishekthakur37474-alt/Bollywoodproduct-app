@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'quiz_header.dart';
 import 'quiz_home_screen.dart';
+import 'quiz_lang.dart';
 import 'quiz_score_screen.dart';
 import 'quiz_leaderboard_screen.dart';
 import 'quiz_profile_screen.dart';
@@ -23,12 +24,12 @@ class _BollywoodQuizScreenState extends State<BollywoodQuizScreen> {
     RepaintBoundary(child: QuizProfileScreen()),
   ];
 
-  static const _titles = [
-    'Bollywood Quiz',
-    'Score',
-    'Leaderboard',
-    'Profile',
-  ];
+  List<String> get _titles => [
+        QuizLang.t('bollywood_quiz'),
+        QuizLang.t('score'),
+        QuizLang.t('leaderboard'),
+        QuizLang.t('profile'),
+      ];
 
   void _onTabTapped(int index) {
     if (index == _selectedIndex) return;
@@ -37,6 +38,13 @@ class _BollywoodQuizScreenState extends State<BollywoodQuizScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return ValueListenableBuilder<String>(
+      valueListenable: QuizLang.code,
+      builder: (context, _, __) => _buildScaffold(),
+    );
+  }
+
+  Widget _buildScaffold() {
     return Scaffold(
       backgroundColor: const Color(0xff0F0F0F),
       extendBody: true,
@@ -85,25 +93,25 @@ class _BollywoodQuizScreenState extends State<BollywoodQuizScreen> {
                 _QuizNavItem(
                   selected: _selectedIndex == 0,
                   icon: HugeIcons.strokeRoundedHome07,
-                  label: 'Home',
+                  label: QuizLang.t('home'),
                   onTap: () => _onTabTapped(0),
                 ),
                 _QuizNavItem(
                   selected: _selectedIndex == 1,
                   icon: HugeIcons.strokeRoundedStar,
-                  label: 'Score',
+                  label: QuizLang.t('score'),
                   onTap: () => _onTabTapped(1),
                 ),
                 _QuizNavItem(
                   selected: _selectedIndex == 2,
                   icon: HugeIcons.strokeRoundedChampion,
-                  label: 'Leaderboard',
+                  label: QuizLang.t('leaderboard'),
                   onTap: () => _onTabTapped(2),
                 ),
                 _QuizNavItem(
                   selected: _selectedIndex == 3,
                   icon: HugeIcons.strokeRoundedUser,
-                  label: 'Profile',
+                  label: QuizLang.t('profile'),
                   onTap: () => _onTabTapped(3),
                 ),
               ],
